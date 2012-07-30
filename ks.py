@@ -27,7 +27,7 @@ namespace_paths = dict((k, os.path.join(key_base_root, v)) for k, v in dict(
 ).iteritems())
 
 
-class ImportHook(object):
+class NamespaceHook(object):
     
     def find_module(self, namespaced_name, path=None):
         
@@ -96,11 +96,43 @@ class ModuleLoader(object):
         self.description = description
     
     def load_module(self, name):
+        
         if __verbose__:
             print self.__class__.__name__, 'loading', repr(self.real_name), 'from', repr(self.path), 'via', repr(self.description)
-        module = imp.load_module(self.real_name, self.file, self.path, self.description)
+        
+        # See if it already exists in non-namespaced form.
+        if self.real_name in sys.modules:
+            
+            # Canonicalize the path of the existing module.
+            path = sys.modules[self.real_name].__file__
+            path = os.path.splitext(path)[0]
+            if path.endswith('__init__'):
+                path = os.path.dirname(path)
+            
+            # It matches?!
+            if path == os.path.splitext(self.path)[0]:
+                module = sys.modules[self.real_name]
+                sys.modules.setdefault(self.namespaced_name, module)
+                return module
+        
+        # Create our stub of a module. If it is in sys.modules then the import
+        # machinery will effectively reload upon it.
+        module = imp.new_module(self.real_name)
         sys.modules.setdefault(self.namespaced_name, module)
-        return module
+        sys.modules.setdefault(self.real_name, module)
+        
+        # Make sure this knows it is part of a larger entity.
+        
+        # Manually set the package path, since the load_module won't handle this
+        # for us since we put a stub into sys.modules.
+        if self.description[-1] == imp.PKG_DIRECTORY:
+            module.__path__ = [self.path]
+            module.__package__ = self.namespaced_name
+        else:
+            module.__package__ = self.namespaced_name.split('.', 1)[0]
+            
+        # Finally load it.
+        return imp.load_module(self.namespaced_name, self.file, self.path, self.description)
         
 
 
@@ -109,7 +141,7 @@ __path__ = []
 
 
 # Register our hook.
-sys.meta_path.append(ImportHook())
+sys.meta_path.append(NamespaceHook())
 
 
 def test():
@@ -127,6 +159,7 @@ def test():
         ('ks.core.environment', 'environment'),
         ('ks.maya.render', 'render'),
         ('ks.nuke.render', 'nuke_render'),
+        ('key_tools_global', 'ks.core.key_tools_global'),
     ]:
         
         print
@@ -143,8 +176,8 @@ def test():
         else:
             if module1 is not module2:
                 print 'FAIL', 'modules are independant'
-                print '\t', module1.__name__
-                print '\t', module2.__name__
+                print '\t', module1.__name__, repr(module1.__file__)
+                print '\t', module2.__name__, repr(module1.__file__)
             else:
                 print 'ok:', repr(module1.__name__), '->', repr(module1.__file__)
     
