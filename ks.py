@@ -55,9 +55,9 @@ class NamespaceHook(object):
         _, namespace, module_name = parts
         namespace_path = namespace_paths[namespace]
         
-        # If we import "ks.nuke.render", actually look for "ks_nuke_render",
-        # "nuke_render", and finally "render" in the "2d/nuke/python" directory.
-        for real_name in ['ks_%s_%s' % (namespace, module_name), '%s_%s' % (namespace, module_name), module_name]:
+        # If we import "ks.nuke.render", actually look for "render", and then
+        # "nuke_render" in the "2d/nuke/python" directory.
+        for real_name in [module_name, '%s_%s' % (namespace, module_name)]:
             
             try:
                 file, path, description = imp.find_module(real_name, [namespace_path])
