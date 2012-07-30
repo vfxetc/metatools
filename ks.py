@@ -30,7 +30,7 @@ namespace_paths = dict((k, os.path.join(key_base_root, v)) for k, v in dict(
 class NamespaceHook(object):
     
     def find_module(self, namespaced_name, path=None):
-        
+                
         parts = namespaced_name.split('.')
         
         # We only deal with our namespaces and immediate modules.
@@ -75,10 +75,12 @@ class NamespaceLoader(object):
         if __verbose__:
             print 'INITIALIZING NAMESPACE', name
         
-        # Setup a dummy module.
+        # Setup a dummy module. We set the path but most of the time it will
+        # NOT be used. It is only here for the `python -m` flag, and will only
+        # allow for non-prefixed module names.
         module = types.ModuleType(name)
         module.__package__ = module.__name__
-        module.__path__ = [] # It is a package, but we will deal with the path.
+        module.__path__ = [namespace_paths[name.split('.')[1]]]
         
         # Set it.
         sys.modules[name] = module
@@ -100,8 +102,10 @@ class ModuleLoader(object):
         if __verbose__:
             print self.__class__.__name__, 'loading', repr(self.real_name), 'from', repr(self.path), 'via', repr(self.description)
         
-        # See if it already exists in non-namespaced form.
-        if self.real_name in sys.modules:
+        # See if it already exists in non-namespaced form and NOT in the name-
+        # spaced form. If it does already exist then this is a reload request,
+        # and not an import, and so we should reinitilize the module.
+        if self.real_name in sys.modules and self.namespaced_name not in sys.modules:
             
             # Canonicalize the path of the existing module.
             path = sys.modules[self.real_name].__file__
@@ -117,8 +121,8 @@ class ModuleLoader(object):
         
         # Create our stub of a module. If it is in sys.modules then the import
         # machinery will effectively reload upon it.
-        module = imp.new_module(self.real_name)
-        sys.modules.setdefault(self.namespaced_name, module)
+        module = sys.modules.get(self.namespaced_name) or imp.new_module(self.namespaced_name)
+        sys.modules[self.namespaced_name] = module
         sys.modules.setdefault(self.real_name, module)
         
         # Make sure this knows it is part of a larger entity.
