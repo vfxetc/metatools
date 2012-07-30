@@ -1,134 +1,159 @@
+import imp
 import os
+import re
 import sys
 import types
-import re
-import imp
 
 
-_package_paths = dict(
+# For direct testing, this controls if print statements execute.
+__verbose__ = False
 
-    core='python',
+
+# The absolute root of the key_base.
+key_base_root = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir))
+
+
+# Dict mapping namespaces to absolute paths to import from...
+namespace_paths = dict((k, os.path.join(key_base_root, v)) for k, v in dict(
     
-    maya='3d/maya/python',
+    #... built from paths relative to the key_base root.
     boujou='3d/boujou/python',
+    core='python',
+    maya='3d/maya/python',
     nuke='2d/nuke/python',
     shake='2d/shake/python',
-    
     systems='systems/python',
-    
-)
-
-_key_base = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir))
-
-
-class MetaHook(object):
-    
-    standalone_re = re.compile(r'^(%s)_(\w+)$' % '|'.join(_package_paths.iterkeys()))
-    package_re = re.compile(r'^ks\.(%s)\.(\w+)$' % '|'.join(_package_paths.iterkeys()))
-    
-    def find_module(self, name, path=None):
         
-        print 'metahook', self, name, path
+).iteritems())
+
+
+class ImportHook(object):
+    
+    def find_module(self, namespaced_name, path=None):
         
-        m = self.package_re.match(name) or self.standalone_re.match(name)
-        if not m:
+        parts = namespaced_name.split('.')
+        
+        # We only deal with our namespaces and immediate modules.
+        if len(parts) > 3:
             return
         
-        package_name, module_name = m.groups()
-        if package_name not in _package_paths:
+        # We only deal with the "ks" package.
+        if parts[0] != 'ks':
             return
         
-        base_path = os.path.join(_key_base, _package_paths[package_name], '%s_%s' % (package_name, module_name))
-        
-        is_package = False
-        path = None
-        
-        for suffix, mode, module_type in imp.get_suffixes():
-            path = os.path.join(base_path, '__init__') + suffix
-            if os.path.exists(path):
-                is_package = True
-                break
-            path = base_path + suffix
-            if os.path.exists(path):
-                break
-        else:
-            # We didn't find anything.
+        # We only deal with our own namespaces.
+        if parts[1] not in namespace_paths:
             return
+        
+        # The namespaced are handled by NamespaceLoader quite simply.
+        if len(parts) == 2:
+            return NamespaceLoader()
+        
+        if __verbose__:
+            print self.__class__.__name__, 'looking for', repr(namespaced_name), 'on', path
+            
+        _, namespace, module_name = parts
+        namespace_path = namespace_paths[namespace]
+        
+        # If we import "ks.nuke.render", actually look for "ks_nuke_render",
+        # "nuke_render", and finally "render" in the "2d/nuke/python" directory.
+        for real_name in ['ks_%s_%s' % (namespace, module_name), '%s_%s' % (namespace, module_name), module_name]:
+            
+            try:
+                file, path, description = imp.find_module(real_name, [namespace_path])
+            except ImportError:
+                continue
+            
+            return ModuleLoader(namespaced_name, real_name, file, path, description)
+        
+        
 
-        return MetaLoader(package_name, module_name, path, module_type, is_package)
-
-
-class MetaLoader(object):
-    
-    def __init__(self, package_name, module_name, path, module_type, is_package):
-        self.package_name = package_name
-        self.module_name = module_name
-        self.path = path
-        self.module_type = module_type
-        self.is_package = is_package
-    
+class NamespaceLoader(object):
+        
     def load_module(self, name):
         
-        if self.module_type == imp.PY_SOURCE:
-            loader = imp.load_source
-        elif self.module_type == imp.PY_COMPILED:
-            loader = imp.load_compiled
-        elif self.module_type == imp.C_EXTENSION:
-            loader = imp.load_dynamic
-        else:
-            # We can only load those three types.
-            return None
+        if __verbose__:
+            print 'INITIALIZING NAMESPACE', name
         
-        print 'loading from', self.path   
-        name = '%s_%s' % (self.package_name, self.module_name)
-        module = loader(name, self.path)
+        # Setup a dummy module.
+        module = types.ModuleType(name)
+        module.__package__ = module.__name__
+        module.__path__ = [] # It is a package, but we will deal with the path.
+        
+        # Set it.
+        sys.modules[name] = module
         
         return module
 
 
-
-
-sys.meta_path.append(MetaHook())
-
-
-# Create pseudo-package modules.
-for package, path in _package_paths.iteritems():
-    module = types.ModuleType('.'.join([__name__, package]))
-    module.__package__ = module.__name__
-    module.__path__ = [os.path.join(_key_base, path)]
-    sys.modules[module.__name__] = module
-    globals()[package] = module
+class ModuleLoader(object):
     
-del package, path, module
+    def __init__(self, namespaced_name, real_name, file, path, description):
+        self.namespaced_name = namespaced_name
+        self.real_name = real_name
+        self.file = file
+        self.path = path
+        self.description = description
+    
+    def load_module(self, name):
+        if __verbose__:
+            print self.__class__.__name__, 'loading', repr(self.real_name), 'from', repr(self.path), 'via', repr(self.description)
+        module = imp.load_module(self.real_name, self.file, self.path, self.description)
+        sys.modules.setdefault(self.namespaced_name, module)
+        return module
+        
 
+
+# Add the path attribute so that the import mechanism treats this as a package.
+__path__ = []
+
+
+# Register our hook.
+sys.meta_path.append(ImportHook())
 
 
 def test():
     
+    global __verbose__
+    __verbose__ = True
+    
+    import traceback
+    
+    
     print '\n\n\n'
     print 'IMPORT TESTS'
     
-    for name in '''
+    for namespaced, canonical in [
+        ('ks.core.environment', 'environment'),
+        ('ks.maya.render', 'render'),
+        ('ks.nuke.render', 'nuke_render'),
+    ]:
         
-        ks.maya.render
-        render
-        
-        ks.nuke.render
-        nuke_render
-        
-        ks.core.environment
-        environment
-        
-    '''.strip().split():
         print
-        print name
+        print namespaced
         print '--------'
         try:
-            module = __import__(name, fromlist=['.'])
-        except ImportError:
-            print 'FAIL'
+            module1 = __import__(namespaced, fromlist=['.'])
+            module2 = __import__(canonical, fromlist=['.'])
+            module3 = __import__(namespaced, fromlist=['.'])
+            module4 = __import__(canonical, fromlist=['.'])
+        except ImportError, e:
+            print 'FAIL', repr(e)
+            traceback.print_exc()
         else:
-            print 'ok:', repr(module.__name__), '->', repr(module.__file__)
+            if module1 is not module2:
+                print 'FAIL', 'modules are independant'
+                print '\t', module1.__name__
+                print '\t', module2.__name__
+            else:
+                print 'ok:', repr(module1.__name__), '->', repr(module1.__file__)
     
     print
+    
+    print 'NAMESPACED'
+    import ks.core.importtest
+    print 'DIRECT'
+    import importtest
+    print 'RELOAD'
+    reload(ks.core.importtest)
 
