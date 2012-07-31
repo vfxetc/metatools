@@ -8,7 +8,6 @@ import types
 # For direct testing, this controls if print statements execute.
 __verbose__ = False
 
-
 # The absolute root of the key_base.
 key_base_root = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir))
 
@@ -27,7 +26,26 @@ namespace_paths = dict((k, os.path.join(key_base_root, v)) for k, v in dict(
 ).iteritems())
 
 
+# We need a fake path to hook onto when we are running a module as a
+# script with the '-m' flag, since runpy (which handles launching a module as
+# a script) does not follow precisely the same semantics as the main import
+# mechanism and does not use meta_hooks on packages. It does check path_hooks
+# for package __path__s as it searches for the module, so we can hook onto that.
+_runpy_sentinel = '<ks runpy sentinel>'
+
+# We hold onto the first path used for a namespace module so that we may clear
+# the hook from it later.
+_runpy_path = [_runpy_sentinel]
+
+
 class NamespaceHook(object):
+    
+    def iter_potential_names(self, namespace, module_name):
+        yield module_name
+        yield '%s_%s' % (namespace, module_name)
+        yield 'ks_%s' % (module_name)
+        yield 'key_tools_%s' % (module_name)
+        yield 'ks_%s_%s' % (namespace, module_name)
     
     def find_module(self, namespaced_name, path=None):
                 
@@ -57,8 +75,7 @@ class NamespaceHook(object):
         
         # If we import "ks.nuke.render", actually look for "render", and then
         # "nuke_render" in the "2d/nuke/python" directory.
-        for real_name in [module_name, '%s_%s' % (namespace, module_name)]:
-            
+        for real_name in self.iter_potential_names(namespace, module_name):            
             try:
                 file, path, description = imp.find_module(real_name, [namespace_path])
             except ImportError:
@@ -67,7 +84,6 @@ class NamespaceHook(object):
             return ModuleLoader(namespaced_name, real_name, file, path, description)
         
         
-
 class NamespaceLoader(object):
         
     def load_module(self, name):
@@ -80,7 +96,7 @@ class NamespaceLoader(object):
         # allow for non-prefixed module names.
         module = types.ModuleType(name)
         module.__package__ = module.__name__
-        module.__path__ = [namespace_paths[name.split('.')[1]]]
+        module.__path__ = _runpy_path if _runpy_path else []
         
         # Set it.
         sys.modules[name] = module
@@ -96,6 +112,14 @@ class ModuleLoader(object):
         self.file = file
         self.path = path
         self.description = description
+    
+    def is_package(self, name):
+        return os.path.exists(os.path.join(self.path, '__init__.py'))
+    
+    def get_code(self, name):
+        # Just a stub to trick runpy for testing.
+        # TODO: Make this real.
+        return compile(open(self.path).read(), self.path, 'exec')
     
     def load_module(self, name):
         
@@ -139,6 +163,22 @@ class ModuleLoader(object):
         return imp.load_module(self.namespaced_name, self.file, self.path, self.description)
         
 
+def runpy_hook(path_item):
+    
+    # We only need our hook to be caught once. Since it is installed by a
+    # namespace pseudo-module, the only time we may need to rewrite an import
+    # for runpy will be directly after the hook is setup.
+    
+    # Remove the hook and the sentinel.
+    sys.path_hooks.remove(runpy_hook)
+    _runpy_path.remove(_runpy_sentinel)
+    
+    # If runpy is searching across our namespace, then return the NamespaceHook.
+    if path_item is _runpy_sentinel:
+        return NamespaceHook()
+    else:
+        raise ImportError('nope')
+
 
 # Add the path attribute so that the import mechanism treats this as a package.
 __path__ = []
@@ -146,6 +186,7 @@ __path__ = []
 
 # Register our hook.
 sys.meta_path.append(NamespaceHook())
+sys.path_hooks.append(runpy_hook)
 
 
 def test():
