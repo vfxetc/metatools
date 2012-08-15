@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+"""Executes the given command with a modified path and KS_PYTHON_SITES.
+
+E.g.:
+
+    dev python -> Runs standard Python but imports from local key_tools.
+    dev maya2011 -> Runs Maya2011 but with the local key_tools.
+
+This still relies upon whichever sitecustomize that is within the PYTHONPATH to
+bootstrap the Python sys.path with KS_PYTHON_SITES. This script still depends
+upon the PATH to contain directories within the production tools in order to
+hook them.
+
+"""
+
+
+import os
+import sys
+
+environ = os.environ.copy()
+
+
+# Construct a list of all possible Python site-packages.
+sites = [os.path.expanduser(x) for x in ('~/key_tools', '~/dev', '~/key_local_tool_development')]
+sites.extend(environ.get('KS_PYTHON_SITES', '').split(':'))
+
+# Filter out those which actually exist.
+sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
+sites = [x for x in sites if os.path.exists(x)]
+
+# Make sure that a development environment exists.
+if not sites:
+    print 'Could not find suitable development directory. Please make one of:'
+    print '\t~/key_tools'
+    print '\t~/dev'
+    print '\t~/key_local_tool_development'
+    exit(1)
+
+environ['KS_PYTHON_SITES'] = ':'.join(sites)
+
+
+# Construct the new path by copying entries in the current PATH which match
+# KS_TOOLS, and adding coresponding entries to all of the sites.
+# TODO: Derive this better.
+ks_tools = os.path.abspath(os.environ['KS_TOOLS'])
+
+path = []
+for dir_name in os.environ['PATH'].split(':'):
+    dir_name = os.path.abspath(dir_name)
+    
+    # If this directory is within the main tools, add a site specific version
+    # if it exists there too.
+    if dir_name.startswith(ks_tools):
+        relative_dir = os.path.relpath(dir_name, ks_tools)
+        for site in sites:
+            site_specific_dir = os.path.join(site, relative_dir)
+            if os.path.exists(site_specific_dir):
+                path.append(site_specific_dir)
+    
+    path.append(dir_name)
+    
+environ['PATH'] = ':'.join(path)
+
+
+# Dump out the environment if there was no command passed.
+if len(sys.argv) == 1:
+    for k, v in sorted(environ.iteritems()):
+        print '%s=%s' % (k, v)
+
+
+# Execute the requested command.
+else:
+
+    # This will look for the command in the PATH within the given environment.
+    os.execvpe(sys.argv[1], sys.argv[1:], environ)
+    
+    # DOES NOT CONTINUE.
+
