@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+"""Deploy current versions of all tools within KS_TOOLS.
+
+Pulls the master branch from each repo's origin, cleans up any orphaned *.pyc
+files, and compiles any new *.py files.
+
+"""
+
+import py_compile
+import os
+from subprocess import call, check_call
+
+try:
+    from subprocess import check_output, CalledProcessError
+    
+except:
+    
+    import subprocess
+    
+    class CalledProcessError(ValueError):
+        pass
+    
+    def check_output(cmd, **kwargs):
+        kwargs['stdout'] = subprocess.PIPE
+        proc = subprocess.Popen(cmd, **kwargs)
+        out, _ = proc.communicate()
+        status = proc.wait()
+        if status:
+            err = CalledProcessError('Command %r returned non-zero exit status %r' % (cmd, status))
+            err.returncode = status
+            err.cmd = cmd
+            err.output = out
+            raise err
+        return out
+    
+
+def git_call(repo, *args, **kwargs):
+    cmd = ['git', '--git-dir', repo] 
+    cmd.extend(args)
+    return check_call(cmd, **kwargs)
+    
+def git_output(repo, *args, **kwargs):
+    cmd = ['git', '--git-dir', repo] 
+    cmd.extend(args)
+    return check_output(cmd, **kwargs)
+
+
+def compile_bytecode(fullname, debug=False, force=False, quiet=False):
+    """Compile bytecode for given file.
+    
+    Lifted from compile all since compileall.compile_file is not availible
+    until Python 2.6.
+    
+    """
+    
+    cfile = fullname + (__debug__ and 'c' or 'o')
+    ftime = os.stat(fullname).st_mtime
+    try:
+        ctime = os.stat(cfile).st_mtime
+    except os.error:
+        ctime = 0
+    if (ctime > ftime) and not force:
+        return
+    if not quiet:
+        print 'Compiling', fullname, '...'
+    
+    try:
+        py_compile.compile(fullname, cfile, None, True)
+    
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
+    
+    except py_compile.PyCompileError, err:
+        if quiet:
+            print 'Compiling', fullname, '...'
+        print err.msg
+    
+    except IOError, e:
+        print "Sorry", e
+    
+
+# Lookup location of tools.
+ks_tools = os.environ['KS_TOOLS']
+
+
+for tool_name in os.listdir(ks_tools):
+    if tool_name.startswith('.'):
+        continue
+    
+    print tool_name
+    print '=' * 78
+    
+    tool_path = os.path.join(ks_tools, tool_name)
+    repo = os.path.join(tool_path, '.git')
+    if not os.path.exists(repo):
+        print tool_name, 'does not have a git repo'
+        continue
+        
+    # Get the new commits.
+    git_call(repo, 'fetch', 'origin')
+    
+    # Do the merge.
+    try:
+        git_call(repo, 'merge', '--ff-only', 'origin/master')
+    except CalledProcessError:
+        print 'ERROR WHILE MERGING', tool_name
+        continue
+    
+    # Clean up temporary files we may have made, except for *.pyc since we will
+    # do that ourselves. The exclude logic is quite backwards from expected.
+    # See: http://git.661346.n2.nabble.com/git-clean-exclude-broken-td6721857.html
+    git_call(repo, 'clean', '-dXf', '-e', '!*.pyc', cwd=tool_path)
+    
+    # Find all Python source code and compile it to bytecode while removing
+    # orphaned bytecode.
+    for dir_path, dir_names, file_names in os.walk(tool_path):
+        for file_name in file_names:
+            
+            # We only care about Python source code (for now).
+            if file_name.startswith('.') or not file_name.endswith('.py'):
+                continue
+        
+            # Compile bytecode if the file exists, and remove bytecode if the
+            # file does not.
+            file_path = os.path.join(dir_path, file_name)
+            if os.path.exists(file_path):
+                compile_bytecode(file_path)
+            elif os.path.exists(file_path + 'c'):
+                print 'Removing', file_path
+                # os.unlink(file_path + 'c')
+    
+    print
+            
+    
