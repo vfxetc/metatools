@@ -17,6 +17,12 @@ hook them.
 import os
 import sys
 
+
+if len(sys.argv) == 1:
+    print 'usage: %s <command to run in dev mode>' % (sys.argv[0])
+    exit(1)
+
+
 environ = os.environ.copy()
 
 
@@ -62,17 +68,9 @@ for dir_name in os.environ['PATH'].split(':'):
 environ['PATH'] = ':'.join(path)
 
 
-# Dump out the environment if there was no command passed.
-if len(sys.argv) == 1:
-    for k, v in sorted(environ.iteritems()):
-        print 'export %s="%s"' % (k, v.encode('string-escape'))
-
-
 # Execute the requested command.
-else:
-
-    # This will look for the command in the PATH within the given environment.
-    os.execvpe(sys.argv[1], sys.argv[1:], environ)
+# This will look for the command in the PATH within the given environment.
+os.execvpe(sys.argv[1], sys.argv[1:], environ)
     
-    # DOES NOT CONTINUE.
+# DOES NOT CONTINUE.
 
