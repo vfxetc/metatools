@@ -65,7 +65,7 @@ environ['PATH'] = ':'.join(path)
 # Dump out the environment if there was no command passed.
 if len(sys.argv) == 1:
     for k, v in sorted(environ.iteritems()):
-        print '%s=%s' % (k, v)
+        print 'export %s="%s"' % (k, v.encode('string-escape'))
 
 
 # Execute the requested command.
