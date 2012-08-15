@@ -35,11 +35,13 @@ except:
     
 
 def git_call(repo, *args, **kwargs):
+    kwargs.setdefault('cwd', os.path.dirname(repo))
     cmd = ['git', '--git-dir', repo] 
     cmd.extend(args)
     return check_call(cmd, **kwargs)
     
 def git_output(repo, *args, **kwargs):
+    kwargs.setdefault('cwd', os.path.dirname(repo))
     cmd = ['git', '--git-dir', repo] 
     cmd.extend(args)
     return check_output(cmd, **kwargs)
@@ -109,7 +111,7 @@ for tool_name in os.listdir(ks_tools):
     # Clean up temporary files we may have made, except for *.pyc since we will
     # do that ourselves. The exclude logic is quite backwards from expected.
     # See: http://git.661346.n2.nabble.com/git-clean-exclude-broken-td6721857.html
-    git_call(repo, 'clean', '-dXf', '-e', '!*.pyc', cwd=tool_path)
+    git_call(repo, 'clean', '-dXf', '-e', '!*.pyc')
     
     # Find all Python source code and compile it to bytecode while removing
     # orphaned bytecode.
