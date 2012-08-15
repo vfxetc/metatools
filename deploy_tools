@@ -97,9 +97,19 @@ for tool_name in os.listdir(ks_tools):
     if not os.path.exists(repo):
         print tool_name, 'does not have a git repo'
         continue
-        
+    
+    # Get current commit to see if we need to do the cleanups later.
+    current_head = git_output(repo, 'rev-parse', 'HEAD').strip()
+    
     # Get the new commits.
     git_call(repo, 'fetch', 'origin')
+    
+    # Don't bother doing the merge or cleanups if we wouldn't move anyways.
+    origin_master = git_output(repo, 'rev-parse', 'origin/master').strip()
+    if origin_master == current_head:
+        print 'Already at origin/master.'
+        print
+        continue
     
     # Do the merge.
     try:
