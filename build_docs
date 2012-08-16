@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+cd $KS_TOOLS
+dirs=$(find . -maxdepth 2 -name docs)
+
+# Clean them up.
+for dir in $dirs; do
+    cd $KS_TOOLS/$dir
+    make -e clean
+done
+
+# Build first time to refresh objects.inv.
+for dir in $dirs; do
+    cd $KS_TOOLS/$dir
+    make -e html
+done
+
+# Build second time to finish it all off.
+for dir in $dirs; do
+    cd $KS_TOOLS/$dir
+    make -e html
+done
