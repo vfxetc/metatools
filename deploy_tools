@@ -123,7 +123,8 @@ for tool_name in os.listdir(ks_tools):
     # The exclude logic is quite backwards from expected.
     git_call(repo, 'clean', '-dXf',
         '-e', '!*.pyc',
-        '-e', '!docs/_build',
+        '-e', '!/docs/_build',
+        '-e', '!/_build', # For the "docs" repo.
     )
     
     # Find all Python source code and compile it to bytecode while removing
