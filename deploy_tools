@@ -90,7 +90,7 @@ for tool_name in os.listdir(ks_tools):
         continue
     
     print tool_name
-    print '=' * 78
+    print '=' * len(tool_name)
     
     tool_path = os.path.join(ks_tools, tool_name)
     repo = os.path.join(tool_path, '.git')
@@ -119,9 +119,12 @@ for tool_name in os.listdir(ks_tools):
         continue
     
     # Clean up temporary files we may have made, except for *.pyc since we will
-    # do that ourselves. The exclude logic is quite backwards from expected.
-    # See: http://git.661346.n2.nabble.com/git-clean-exclude-broken-td6721857.html
-    git_call(repo, 'clean', '-dXf', '-e', '!*.pyc')
+    # do that ourselves, and documentation builds since that is very anoying.
+    # The exclude logic is quite backwards from expected.
+    git_call(repo, 'clean', '-dXf',
+        '-e', '!*.pyc',
+        '-e', '!docs/_build',
+    )
     
     # Find all Python source code and compile it to bytecode while removing
     # orphaned bytecode.
