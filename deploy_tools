@@ -118,14 +118,21 @@ for tool_name in os.listdir(ks_tools):
         print 'ERROR WHILE MERGING', tool_name
         continue
     
+    # Update and submodules.
+    try:
+        git_call(repo, 'submodule', 'update', '--init', '--recursive')
+    except CalledProcessError:
+        print 'ERROR WHILE UPDATING SUBMODULES FOR', tool_name
+        continue
+    
     # Clean up temporary files we may have made, except for *.pyc since we will
     # do that ourselves, and documentation builds since that is very anoying.
     # The exclude logic is quite backwards from expected.
-    git_call(repo, 'clean', '-dXf',
-        '-e', '!*.pyc',
-        '-e', '!/docs/_build',
-        '-e', '!/_build', # For the "docs" repo.
-    )
+    cmd = ['clean', '-dXf']
+    for pattern in '*.pyc', '/docs/_build', '/_build':
+        cmd.extend(['-e', '!' + pattern])
+    git_call(repo, *cmd)
+    git_call(repo, 'submodule', 'foreach', '--recursive', 'git', *cmd)
     
     # Find all Python source code and compile it to bytecode while removing
     # orphaned bytecode.
