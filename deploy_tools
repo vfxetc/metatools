@@ -6,8 +6,9 @@ files, and compiles any new *.py files.
 
 """
 
-import py_compile
+import optparse
 import os
+import py_compile
 from subprocess import call, check_call
 
 try:
@@ -81,6 +82,16 @@ def compile_bytecode(fullname, debug=False, force=False, quiet=False):
         print "Sorry", e
     
 
+optparser = optparse.OptionParser()
+optparser.add_option("--force", dest="force", action="store_true", default=False)
+optparser.add_option("--clean", dest="clean", action="store_true", default=False)
+optparser.add_option("--reset", dest="reset", action="store_true", default=False)
+optparser.add_option("--nopyc", dest="nopyc", action="store_true", default=False)
+optparser.add_option("--nomake", dest="nomake", action="store_true", default=False)
+optparser.add_option("--nosubmodules", dest="nosubmodules", action="store_true", default=False)
+opts, args = optparser.parse_args()
+
+
 # Lookup location of tools.
 ks_tools = os.environ['KS_TOOLS']
 
@@ -106,51 +117,62 @@ for tool_name in os.listdir(ks_tools):
     
     # Don't bother doing the merge or cleanups if we wouldn't move anyways.
     origin_master = git_output(repo, 'rev-parse', 'origin/master').strip()
-    if origin_master == current_head:
+    if not opts.force and origin_master == current_head:
         print 'Already at origin/master.'
         print
         continue
     
-    # Do the merge.
-    try:
-        git_call(repo, 'merge', '--ff-only', 'origin/master')
-    except CalledProcessError:
-        print 'ERROR WHILE MERGING', tool_name
-        continue
+    # Do the reset or merge.
+    if opts.reset:
+        try:
+            git_call(repo, 'reset', '--hard', 'origin/master')
+        except CalledProcessError:
+            print 'ERROR WHILE RESETTING', tool_name
+            continue
+    else:
+        try:
+            git_call(repo, 'merge', '--ff-only', 'origin/master')
+        except CalledProcessError:
+            print 'ERROR WHILE MERGING', tool_name
+            continue
     
     # Update and submodules.
-    try:
-        git_call(repo, 'submodule', 'update', '--init', '--recursive')
-    except CalledProcessError:
-        print 'ERROR WHILE UPDATING SUBMODULES FOR', tool_name
-        continue
+    if not opts.nosubmodules:
+        try:
+            git_call(repo, 'submodule', 'update', '--init', '--recursive')
+        except CalledProcessError:
+            print 'ERROR WHILE UPDATING SUBMODULES FOR', tool_name
+            continue
     
     # Clean up temporary files we may have made, except for *.pyc since we will
     # do that ourselves, and documentation builds since that is very anoying.
     # The exclude logic is quite backwards from expected.
-    cmd = ['clean', '-dXf']
-    for pattern in '*.pyc', '/docs/_build', '/_build':
-        cmd.extend(['-e', '!' + pattern])
-    git_call(repo, *cmd)
-    git_call(repo, 'submodule', 'foreach', '--recursive', 'git', *cmd)
+    if opts.clean:
+        git_call(repo, *cmd)
+        git_call(repo, 'submodule', 'foreach', '--recursive', 'git', 'clean', '-dXf')
+    
+    # Run a top-level Makefile if it exists.
+    if not opts.nomake and os.path.exists(os.path.join(tool_path, 'Makefile')):
+        check_call(['make', '-j4'], cwd=tool_path)
     
     # Find all Python source code and compile it to bytecode while removing
     # orphaned bytecode.
-    for dir_path, dir_names, file_names in os.walk(tool_path):
-        for file_name in file_names:
+    if not opts.nopyc:
+        for dir_path, dir_names, file_names in os.walk(tool_path):
+            for file_name in file_names:
             
-            # We only care about Python source code (for now).
-            if file_name.startswith('.') or not file_name.endswith('.py'):
-                continue
+                # We only care about Python source code (for now).
+                if file_name.startswith('.') or not file_name.endswith('.py'):
+                    continue
         
-            # Compile bytecode if the file exists, and remove bytecode if the
-            # file does not.
-            file_path = os.path.join(dir_path, file_name)
-            if os.path.exists(file_path):
-                compile_bytecode(file_path)
-            elif os.path.exists(file_path + 'c'):
-                print 'Removing', file_path
-                # os.unlink(file_path + 'c')
+                # Compile bytecode if the file exists, and remove bytecode if
+                # the file does not.
+                file_path = os.path.join(dir_path, file_name)
+                if os.path.exists(file_path):
+                    compile_bytecode(file_path)
+                elif os.path.exists(file_path + 'c'):
+                    print 'Removing', file_path
+                    os.unlink(file_path + 'c')
     
     print
             
