@@ -156,8 +156,9 @@ for tool_name in os.listdir(ks_tools):
     # do that ourselves, and documentation builds since that is very anoying.
     # The exclude logic is quite backwards from expected.
     if opts.clean:
-        git_call(repo, *cmd)
-        git_call(repo, 'submodule', 'foreach', '--recursive', 'git', 'clean', '-dXf')
+        git_call(repo, 'clean', '-dXf')
+        if not opts.nosubmodules:
+            git_call(repo, 'submodule', 'foreach', '--recursive', 'git', 'clean', '-dXf')
     
     # Run a top-level Makefile if it exists.
     if not opts.nomake and os.path.exists(os.path.join(tool_path, 'Makefile')):
