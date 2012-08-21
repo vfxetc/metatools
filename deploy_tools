@@ -9,6 +9,7 @@ files, and compiles any new *.py files.
 import optparse
 import os
 import py_compile
+import time
 from subprocess import call, check_call
 
 try:
@@ -62,8 +63,15 @@ def compile_bytecode(fullname, debug=False, force=False, quiet=False):
         ctime = os.stat(cfile).st_mtime
     except os.error:
         ctime = 0
+    
+    # Pull future times back to reality.
+    if ftime > time.time():
+        print 'Future mtime on', fullname
+        os.utime(fullname, None)
+    
     if (ctime > ftime) and not force:
         return
+    
     if not quiet:
         print 'Compiling', fullname, '...'
     
