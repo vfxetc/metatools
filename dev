@@ -91,7 +91,8 @@ environ['PATH'] = ':'.join(path)
 
 
 if opts.export:
-    print '\n'.join("%s=%s" % x for x in sorted(environ.iteritems()))
+    # TODO: Use proper quote.
+    print '\n'.join("%s='%s'" % x for x in sorted(environ.iteritems()))
     exit()
 
 if not args:
