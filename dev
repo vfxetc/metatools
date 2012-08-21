@@ -15,24 +15,46 @@ hook them.
 
 
 import os
+import optparse
 import sys
 
 
-if len(sys.argv) == 1:
-    print 'usage: %s <command to run in dev mode>' % (sys.argv[0])
-    exit(1)
+optparser = optparse.OptionParser(
+    usage="usage: %prog [options] command [argument ...]"
+)
+optparser.add_option(
+    '-e', '--export',
+    dest="export", action="store_true", default=False,
+    help="print the changes to the environment",
+)
+optparser.add_option(
+    '-s', '--site',
+    dest="sites", action="append",
+    help="directory to use as the development $KS_TOOLS",
+)
+opts, args = optparser.parse_args()
 
 
-environ = os.environ.copy()
+# Should we inherit, or start a clean environment?
+if opts.export:
+    environ = {}
+else:
+    environ = os.environ.copy()
 
 
-# Construct a list of all possible Python site-packages.
-sites = [os.path.expanduser(x) for x in ('~/key_tools', '~/dev', '~/key_local_tool_development')]
-sites.extend(environ.get('KS_PYTHON_SITES', '').split(':'))
+# Determine which new sites to add.
+if opts.sites:
+    sites = opts.sites[:]
+else:
+    # Autodetect local sites.
+    sites = [os.path.expanduser(x) for x in ('~/key_tools', '~/dev', '~/key_local_tool_development')]
+    sites = [x for x in sites if os.path.exists(x)]
 
-# Filter out those which actually exist.
+
+# Append on the existing sites, and make everything absolute.
+sites.extend(os.environ.get('KS_PYTHON_SITES', '').split(':'))
 sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
-sites = [x for x in sites if os.path.exists(x)]
+
 
 # Make sure that a development environment exists.
 if not sites:
@@ -68,9 +90,17 @@ for dir_name in os.environ['PATH'].split(':'):
 environ['PATH'] = ':'.join(path)
 
 
+if opts.export:
+    print '\n'.join("%s=%s" % x for x in sorted(environ.iteritems()))
+    exit()
+
+if not args:
+    optparser.print_usage()
+    exit(1)
+    
 # Execute the requested command.
 # This will look for the command in the PATH within the given environment.
-os.execvpe(sys.argv[1], sys.argv[1:], environ)
+os.execvpe(args[0], args, environ)
     
 # DOES NOT CONTINUE.
 
