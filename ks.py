@@ -6,7 +6,7 @@ import types
 
 
 # For direct testing, this controls if print statements execute.
-__verbose__ = False
+__verbose__ = True
 
 # The absolute root of the key_base.
 key_base_root = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir))
@@ -75,11 +75,15 @@ class NamespaceHook(object):
         
         # If we import "ks.nuke.render", actually look for "render", and then
         # "nuke_render" in the "2d/nuke/python" directory.
-        for real_name in self.iter_potential_names(namespace, module_name):            
+        for real_name in self.iter_potential_names(namespace, module_name):
+            
             try:
                 file, path, description = imp.find_module(real_name, [namespace_path])
             except ImportError:
                 continue
+            
+            if __verbose__:
+                print '\tfound:', repr(path)
             
             return ModuleLoader(namespaced_name, real_name, file, path, description)
         
@@ -117,10 +121,14 @@ class ModuleLoader(object):
         return os.path.exists(os.path.join(self.path, '__init__.py'))
     
     def get_code(self, name):
-        # Just a stub to trick runpy for testing.
-        # TODO: Make this real.
+        if __verbose__:
+            print self.__class__.__name__, 'loading code for', repr(name)
         return compile(open(self.path).read(), self.path, 'exec')
     
+    def get_filename(self, name):
+        # For runpy, otherwise __file__ is None.
+        return self.path
+        
     def load_module(self, name):
         
         if __verbose__:
@@ -146,10 +154,10 @@ class ModuleLoader(object):
         # Create our stub of a module. If it is in sys.modules then the import
         # machinery will effectively reload upon it.
         module = sys.modules.get(self.namespaced_name) or imp.new_module(self.namespaced_name)
+        
+        # Set it in sys.modules under all applicable names.
         sys.modules[self.namespaced_name] = module
         sys.modules.setdefault(self.real_name, module)
-        
-        # Make sure this knows it is part of a larger entity.
         
         # Manually set the package path, since the load_module won't handle this
         # for us since we put a stub into sys.modules.
@@ -158,7 +166,7 @@ class ModuleLoader(object):
             module.__package__ = self.namespaced_name
         else:
             module.__package__ = self.namespaced_name.split('.', 1)[0]
-            
+                
         # Finally load it.
         return imp.load_module(self.namespaced_name, self.file, self.path, self.description)
         
