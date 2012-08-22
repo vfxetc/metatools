@@ -6,7 +6,7 @@ import types
 
 
 # For direct testing, this controls if print statements execute.
-__verbose__ = True
+__verbose__ = False
 
 # The absolute root of the key_base.
 key_base_root = os.path.abspath(os.path.join(__file__, os.path.pardir, os.path.pardir))
