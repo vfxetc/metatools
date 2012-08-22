@@ -32,6 +32,8 @@ optparser.add_option(
     dest="sites", action="append",
     help="directory to use as the development $KS_TOOLS",
 )
+
+optparser.disable_interspersed_args()
 opts, args = optparser.parse_args()
 
 
