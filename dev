@@ -33,6 +33,11 @@ optparser.add_option(
     help="directory to use as the development $KS_TOOLS",
 )
 optparser.add_option(
+    '-u', '--user',
+    dest="users", action="append",
+    help="user whose dev environment to inherit; overriden by --site",
+)
+optparser.add_option(
     '--sitenames',
     dest="sitenames", action="store_true", default=False,
     help="print the first development environment we find"
@@ -54,7 +59,8 @@ if opts.sites:
     sites = opts.sites[:]
 else:
     # Autodetect local sites.
-    sites = [os.path.expanduser(x) for x in ('~/key_tools', '~/dev', '~/key_local_tool_development')]
+    users = opts.users or [""]
+    sites = [os.path.expanduser('~%s/%s' % (user, name)) for user in users for name in ('key_tools', 'dev', 'key_local_tool_development')]
     sites = [x for x in sites if os.path.exists(x)]
 
 
