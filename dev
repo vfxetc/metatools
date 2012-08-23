@@ -32,6 +32,11 @@ optparser.add_option(
     dest="sites", action="append",
     help="directory to use as the development $KS_TOOLS",
 )
+optparser.add_option(
+    '-b', '--shell',
+    dest="shell", action="store_true", default=False,
+    help="start a shell in development mode",
+)
 
 optparser.disable_interspersed_args()
 opts, args = optparser.parse_args()
@@ -96,6 +101,10 @@ if opts.export:
     # TODO: Use proper quote.
     print '\n'.join("export %s='%s'" % x for x in sorted(environ.iteritems()))
     exit()
+
+if opts.shell:
+    shell = os.environ.get('SHELL', 'bash')
+    args = [shell, '--norc']
 
 if not args:
     optparser.print_usage()
