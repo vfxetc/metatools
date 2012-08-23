@@ -33,9 +33,9 @@ optparser.add_option(
     help="directory to use as the development $KS_TOOLS",
 )
 optparser.add_option(
-    '-b', '--shell',
-    dest="shell", action="store_true", default=False,
-    help="start a shell in development mode",
+    '--sitenames',
+    dest="sitenames", action="store_true", default=False,
+    help="print the first development environment we find"
 )
 
 optparser.disable_interspersed_args()
@@ -58,11 +58,6 @@ else:
     sites = [x for x in sites if os.path.exists(x)]
 
 
-# Append on the existing sites, and make everything absolute.
-sites.extend(os.environ.get('KS_PYTHON_SITES', '').split(':'))
-sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
-
-
 # Make sure that a development environment exists.
 if not sites:
     print 'Could not find suitable development directory. Please make one of:'
@@ -70,6 +65,19 @@ if not sites:
     print '\t~/dev'
     print '\t~/key_local_tool_development'
     exit(1)
+
+
+if opts.sitenames:
+    print ':'.join(sites)
+    exit(0)
+
+
+# Append on the existing sites, and make everything absolute.
+sites.extend(os.environ.get('KS_PYTHON_SITES', '').split(':'))
+sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
+
+
+
 
 environ['KS_PYTHON_SITES'] = ':'.join(sites)
 
@@ -102,14 +110,12 @@ if opts.export:
     print '\n'.join("export %s='%s'" % x for x in sorted(environ.iteritems()))
     exit()
 
-if opts.shell:
-    shell = os.environ.get('SHELL', 'bash')
-    args = [shell, '--norc']
 
 if not args:
     optparser.print_usage()
     exit(1)
-    
+
+
 # Execute the requested command.
 # This will look for the command in the PATH within the given environment.
 os.execvpe(args[0], args, environ)
