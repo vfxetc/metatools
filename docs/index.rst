@@ -1,10 +1,10 @@
 .. _index:
 
-entrypoints
-===========
+``entrypoints`` API Reference
+=============================
 
-entrypoints.search
-------------------
+``entrypoints.search``
+----------------------
 
 .. automodule:: entrypoints.search
     :members:

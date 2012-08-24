@@ -31,11 +31,13 @@ def get_executable_path(name):
 def get_app_or_executable_cmd(app_name, exec_name=None):
     """Find an OS X app (if on a Mac), and fall back to an executable.
     
-    :param str app_name: The name of the OS X application to find (without ``.app``).
-    :param str exec_name: The name of the executable to find; defaults to ``app_name``.
+    :param str app_name: The name of the OS X application to find
+        (without ``.app``).
+    :param str exec_name: The name of the executable to find;
+        defaults to ``app_name``.
     :throws ValueError: When it cannot find an app or executable.
-    :returns: A list that is directly usable in :class:`subprocess.Popen`, and which
-        anything appended to will be treated as an argument.
+    :returns: A list that is directly usable in :class:`subprocess.Popen`,
+        and which anything appended to will be treated as an argument.
     
     On a Mac when there is an application:
     
