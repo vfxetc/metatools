@@ -124,6 +124,9 @@ if opts.full:
         new_v = v.replace(ks_tools, new_tools)
         if new_v != v:
             environ.setdefault(k, new_v)
+    
+    # Make sure that `sitecustomize` is still on the path.
+    environ['PYTHONPATH'] += ':' + ks_tools
 
 
 # Print out the changes to the environment.
