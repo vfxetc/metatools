@@ -38,11 +38,15 @@ optparser.add_option(
     help="user whose dev environment to inherit; overriden by --site",
 )
 optparser.add_option(
-    '--list-sites',
+    '-l', '--list-sites',
     dest="list_sites", action="store_true", default=False,
     help="list the development environments we would have used (colon delimited)"
 )
-
+optparser.add_option(
+    '-f', '--full',
+    dest="full", action="store_true", default=False,
+    help="completely override the standard environment, i.e. don't inherit from $KS_TOOLS",
+)
 optparser.disable_interspersed_args()
 opts, args = optparser.parse_args()
 
@@ -56,16 +60,16 @@ else:
 
 # Determine which new sites to add.
 if opts.sites:
-    sites = opts.sites[:]
+    new_sites = opts.sites[:]
 else:
     # Autodetect local sites.
     users = opts.users or [""]
-    sites = [os.path.expanduser('~%s/%s' % (user, name)) for user in users for name in ('key_tools', 'dev', 'key_local_tool_development')]
-    sites = [x for x in sites if os.path.exists(x)]
+    new_sites = [os.path.expanduser('~%s/%s' % (user, name)) for user in users for name in ('key_tools', 'dev', 'key_local_tool_development')]
+    new_sites = [x for x in new_sites if os.path.exists(x)]
 
 
 # Make sure that a development environment exists.
-if not sites:
+if not new_sites:
     print 'Could not find suitable development directory. Please make one of:'
     print '\t~/key_tools'
     print '\t~/dev'
@@ -74,12 +78,12 @@ if not sites:
 
 
 if opts.list_sites:
-    print ':'.join(sites)
+    print ':'.join(new_sites)
     exit(0)
 
 
 # Append on the existing sites, and make everything absolute.
-sites.extend(os.environ.get('KS_PYTHON_SITES', '').split(':'))
+sites = new_sites + os.environ.get('KS_PYTHON_SITES', '').split(':')
 sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
 
 
@@ -111,9 +115,21 @@ for dir_name in os.environ['PATH'].split(':'):
 environ['PATH'] = ':'.join(path)
 
 
+# Replace all $KS_TOOLS with our new site.
+if opts.full:
+    new_tools = new_sites[0]
+    for k, v in environ.items():
+        environ[k] = v.replace(ks_tools, new_tools)
+    for k, v in os.environ.iteritems():
+        new_v = v.replace(ks_tools, new_tools)
+        if new_v != v:
+            environ.setdefault(k, new_v)
+
+
+# Print out the changes to the environment.
 if opts.export:
-    # TODO: Use proper quote.
-    print '\n'.join("export %s='%s'" % x for x in sorted(environ.iteritems()))
+    for k, v in sorted(environ.iteritems()):
+        print "export %s='%s'" % (k, v.replace("'", "'\\''"))
     exit()
 
 
