@@ -38,9 +38,9 @@ optparser.add_option(
     help="user whose dev environment to inherit; overriden by --site",
 )
 optparser.add_option(
-    '--sitenames',
-    dest="sitenames", action="store_true", default=False,
-    help="print the first development environment we find"
+    '--list-sites',
+    dest="list_sites", action="store_true", default=False,
+    help="list the development environments we would have used (colon delimited)"
 )
 
 optparser.disable_interspersed_args()
@@ -73,7 +73,7 @@ if not sites:
     exit(1)
 
 
-if opts.sitenames:
+if opts.list_sites:
     print ':'.join(sites)
     exit(0)
 
