@@ -262,6 +262,8 @@ extlinks = {
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'python': ('http://docs.python.org/release/2.6.8/', None),
+    'keybase': (os.path.abspath(os.path.join(__file__, '../../../key_base/docs/_build/html')), None),
+    'main': (os.path.abspath(os.path.join(__file__, '../../../docs/_build/html')), None),
 }
 
 

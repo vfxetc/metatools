@@ -2,6 +2,10 @@
 It is imperative that we return absolute paths so that the executables will be
 able to bootstrap a proper development environment.
 
+Apps are searched for within ``key_base/applications`` in all tools listed in
+:envvar:`KS_PYTHON_SITES` and in :envvar:`KS_TOOLS`. Executables are searched
+for within :envvar:`PATH`.
+
 """
 
 import os
@@ -31,7 +35,7 @@ def get_app_or_executable_cmd(app_name, exec_name=None):
     :param str exec_name: The name of the executable to find; defaults to ``app_name``.
     :throws ValueError: When it cannot find an app or executable.
     :returns: A list that is directly usable in :class:`subprocess.Popen`, and which
-    anything appended to will be treated as an argument.
+        anything appended to will be treated as an argument.
     
     On a Mac when there is an application:
     
