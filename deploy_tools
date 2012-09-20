@@ -118,7 +118,7 @@ for tool_name in os.listdir(ks_tools):
         continue
     
     # Get current commit to see if we need to do the cleanups later.
-    current_head = git_output(repo, 'rev-parse', 'HEAD').strip()
+    current_head = git_output(repo, 'rev-parse', 'master').strip()
     
     # Get the new commits.
     git_call(repo, 'fetch', 'origin')
