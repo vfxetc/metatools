@@ -16,27 +16,27 @@ def _resolve_relative_name(module, relative):
     return relative
 
 
-def _unload(module, visited=None):
+def _unload_associated(module, visited):
     
     # Make sure to not hit the same module twice.
-    if visited is None:
-        visited = set()
     if module.__name__ in visited:
         return
     visited.add(module.__name__)
-        
+    
     associates = getattr(module, '__also_reload__', [])
     for name in associates:
         name = _resolve_relative_name(module.__name__, name)
         child_module = sys.modules.get(name)
         if child_module is not None:
             print '# Unloading:', name, 'at 0x%x' % id(child_module)
-            _unload(child_module, visited)
-            sys.modules.pop(name)
+            if hasattr(child_module, '__before_unload__'):
+                child_module.__before_unload__()
+            _unload_associated(child_module, visited)
+            sys.modules.pop(name, None)
 
 
-def unload(module):
-    _unload(module)
+def unload_associated(module):
+    _unload_associated(module, set())
 
 
 def is_outdated(module, visited=None):
@@ -79,7 +79,7 @@ def reload(module):
         state = module.__before_reload__()
     
     # Unload requested modules.
-    _unload(module)
+    unload_associated(module)
     
     print '# Reloading:', module.__name__, 'at 0x%x' % id(module)
     __builtin__.reload(module)
