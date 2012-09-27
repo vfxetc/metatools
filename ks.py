@@ -52,7 +52,7 @@ class NamespaceHook(object):
         parts = namespaced_name.split('.')
         
         # We only deal with our namespaces and immediate modules.
-        if len(parts) > 3:
+        if len(parts) < 2 or len(parts) > 3:
             return
         
         # We only deal with the "ks" package.
