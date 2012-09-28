@@ -115,7 +115,7 @@ def compile_bytecode(fullname, debug=False, force=False, quiet=False):
         print err.msg
     
     except IOError, e:
-        print colour("ERROR:", bg=red, reset=True), e
+        print colour("ERROR:", bg='red', reset=True), e
     
 
 optparser = optparse.OptionParser()
