@@ -55,7 +55,7 @@ def colour(message, fg=None, bg=None, bright=False, reset=False):
     if fg is not None:
         parts.extend((CSI, '3', str(_colours[fg]), 'm'))
     if bg is not None:
-        parts.extend((CSI, '4', str(_colours[fg]), 'm'))
+        parts.extend((CSI, '4', str(_colours[bg]), 'm'))
     if bright:
         parts.extend((CSI, '1m'))
     parts.append(message)
