@@ -115,7 +115,7 @@ def compile_bytecode(fullname, debug=False, force=False, quiet=False):
         print err.msg
     
     except IOError, e:
-        print color("ERROR:", bg=red, reset=True), e
+        print colour("ERROR:", bg=red, reset=True), e
     
 
 optparser = optparse.OptionParser()
@@ -152,7 +152,7 @@ for tool_name in tool_names:
     repo = os.path.join(tool_path, '.git')
     if not os.path.exists(repo):
         print
-        print color('ERROR: Not a git repo.', fg='red')
+        print colour('ERROR: Not a git repo.', fg='red')
         continue
     
     # Get current commit to see if we need to do the cleanups later.
@@ -171,13 +171,13 @@ for tool_name in tool_names:
         try:
             git_call(repo, 'reset', '--hard', 'origin/master')
         except CalledProcessError:
-            print color('ERROR: Git error during reset.', fg='red', reset=True)
+            print colour('ERROR: Git error during reset.', fg='red', reset=True)
             continue
     else:
         try:
             git_call(repo, 'merge', '--ff-only', 'origin/master')
         except CalledProcessError:
-            print color('ERROR: Git error during fast-forward (merge).', fg='red', reset=True)
+            print colour('ERROR: Git error during fast-forward (merge).', fg='red', reset=True)
             continue
     
     # Update and submodules.
@@ -185,7 +185,7 @@ for tool_name in tool_names:
         try:
             git_call(repo, 'submodule', 'update', '--init', '--recursive')
         except CalledProcessError:
-            print color('ERROR: Git error during submodule update.', fg='red', reset=True)
+            print colour('ERROR: Git error during submodule update.', fg='red', reset=True)
             continue
     
     # Clean up temporary files we may have made, except for *.pyc since we will
