@@ -146,7 +146,7 @@ for tool_name in tool_names:
     if tool_name.startswith('.'):
         continue
     
-    print '==> "%s"' % colour(tool_name, fg='blue', reset=True)
+    print '==>', colour(tool_name, fg='blue', reset=True)
     
     tool_path = os.path.join(ks_tools, tool_name)
     repo = os.path.join(tool_path, '.git')
