@@ -146,7 +146,7 @@ for tool_name in tool_names:
     if tool_name.startswith('.'):
         continue
     
-    print '==> "%s"' % (colour(tool_name, fg='blue', reset=True), ),
+    print '==> "%s"' % colour(tool_name, fg='blue', reset=True)
     
     tool_path = os.path.join(ks_tools, tool_name)
     repo = os.path.join(tool_path, '.git')
@@ -164,11 +164,7 @@ for tool_name in tool_names:
     # Don't bother doing the merge or cleanups if we wouldn't move anyways.
     origin_master = git_output(repo, 'rev-parse', '--verify', 'origin/master').strip()
     if not opts.force and origin_master == current_head:
-        print 'is up to date.'
         continue
-    
-    # Skip over the ellipsis.
-    print
     
     # Do the reset or merge.
     if opts.reset:
