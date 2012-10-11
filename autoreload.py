@@ -70,16 +70,14 @@ def is_outdated(module, recursive=True):
     return False
 
 
-def reload(module, auto=False):
+def reload(module):
     
     state = None
     if hasattr(module, '__before_reload__'):
         state = module.__before_reload__()
     
     for mod in _iter_chain(module):
-        if auto and not _is_outdated(mod):
-            continue
-        print '# Reloading:', mod.__name__, 'at 0x%x' % id(mod)
+        print '# Reloading: %s at 0x%x' % (mod.__name__, id(mod))
         __builtin__.reload(mod)
     
     if hasattr(module, '__after_reload__'):
@@ -88,5 +86,5 @@ def reload(module, auto=False):
 
 def autoreload(module):
     if is_outdated(module):
-        reload(module, auto=True)
+        reload(module)
 
