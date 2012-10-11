@@ -7,6 +7,7 @@ unload those dependencies on reload.
 """
 
 import __builtin__
+import itertools
 import os
 import sys
 
@@ -24,50 +25,32 @@ def _resolve_relative_name(module, relative):
     return relative
 
 
-def _unload_associated(module, visited):
+def _iter_chain(module, visited=None):
+    
+    if visited is None:
+        visited = set()
     
     # Make sure to not hit the same module twice.
     if module.__name__ in visited:
         return
     visited.add(module.__name__)
     
-    associates = getattr(module, '__also_reload__', [])
-    for name in associates:
+    for name in getattr(module, '__also_reload__', []):
         name = _resolve_relative_name(module.__name__, name)
-        child_module = sys.modules.get(name)
-        if child_module is not None:
-            print '# Unloading:', name, 'at 0x%x' % id(child_module)
-            if hasattr(child_module, '__before_unload__'):
-                child_module.__before_unload__()
-            _unload_associated(child_module, visited)
-            for k, v in sys.modules.items():
-                if child_module is v:
-                    if k != name:
-                        print '# Unloading:', name, 'A.K.A.', k
-                    del sys.modules[k]
+        child = sys.modules.get(name)
+        if child is not None:
+            for x in _iter_chain(child, visited):
+                yield x
+    yield module
 
 
-def unload_associated(module):
-    _unload_associated(module, set())
-
-
-def is_outdated(module):
-    return _is_outdated(module, set())
-
-def _is_outdated(module, visited):
-    
-    # Make sure to not hit the same module twice.
-    if module.__name__ in visited:
-        return
-    visited.add(module.__name__)
-    
+def _is_outdated(module):
     # Find the file that this comes from.
     file_path = getattr(module, '__file__', '<notafile>')
     if file_path.endswith('.pyc') and os.path.exists(file_path[:-1]):
         file_path = file_path[:-1]
     elif not os.path.exists(file_path):
         file_path = None
-        
     if file_path is not None:
         # Determine if we should reload via mtimes.
         last_reload_time   = _reload_times.get(file_path)
@@ -75,27 +58,29 @@ def _is_outdated(module, visited):
         _reload_times[file_path] = last_modified_time
         if last_reload_time and last_reload_time < last_modified_time:
             return True
-    
-    # Check associates.
-    associates = getattr(module, '__also_reload__', [])
-    for name in associates:
-        name = _resolve_relative_name(module.__name__, name)
-        child_module = sys.modules.get(name)
-        if child_module is not None and _is_outdated(child_module, visited):
+    return False
+
+
+def is_outdated(module, recursive=True):
+    if not recursive:
+        return _is_outdated(module)
+    for mod in _iter_chain(module):
+        if _is_outdated(mod):
             return True
+    return False
 
 
-def reload(module):
+def reload(module, auto=False):
     
     state = None
     if hasattr(module, '__before_reload__'):
         state = module.__before_reload__()
     
-    # Unload requested modules.
-    unload_associated(module)
-    
-    print '# Reloading:', module.__name__, 'at 0x%x' % id(module)
-    __builtin__.reload(module)
+    for mod in _iter_chain(module):
+        if auto and not _is_outdated(mod):
+            continue
+        print '# Reloading:', mod.__name__, 'at 0x%x' % id(mod)
+        __builtin__.reload(mod)
     
     if hasattr(module, '__after_reload__'):
         module.__after_reload__(state)
@@ -103,5 +88,5 @@ def reload(module):
 
 def autoreload(module):
     if is_outdated(module):
-        reload(module)
+        reload(module, auto=True)
 

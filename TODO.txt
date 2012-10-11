@@ -1,0 +1,12 @@
+
+Hooks:
+    
+    def __before_reload__(): return state
+    def __after_reload__(state): pass
+    
+    def __before_unload__(): pass
+    
+    __also_unload__ = ['other', 'modules']
+    __auto_reload_dependencies__ = ['other', 'modules']
+        - Do we need seperate unloading and reloading, or should all
+          dependencies be unloaded before reloading the main one?
