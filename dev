@@ -47,9 +47,16 @@ optparser.add_option(
     dest="full", action="store_true", default=False,
     help="completely override the standard environment, i.e. don't inherit from $KS_TOOLS",
 )
+optparser.add_option(
+    '-b', '--bootstrap',
+    dest="bootstrap", action="store_true", default=False,
+    help="bootstrap a previous environment from $KS_DEV_ARGS",
+)
 optparser.disable_interspersed_args()
 opts, args = optparser.parse_args()
 
+if opts.bootstrap:
+    opts, _ = optparser.parse_args([x for x in os.environ.get('KS_DEV_ARGS', '').split() if x])
 
 # Should we inherit, or start a clean environment?
 if opts.export:
@@ -57,6 +64,11 @@ if opts.export:
 else:
     environ = os.environ.copy()
 
+# Store the original flags as provided so that --bootstrap can pick it back up.
+# Can't just use -len(args) because -0 won't do what we want.
+bootstrap = sys.argv[1:len(sys.argv) - len(args)]
+bootstrap = os.environ.get('KS_DEV_ARGS', '').split() + bootstrap
+environ['KS_DEV_ARGS'] = ' '.join(x for x in bootstrap if x and x not in ('-e', '--export'))
 
 # Determine which new sites to add.
 if opts.sites:
