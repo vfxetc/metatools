@@ -132,11 +132,11 @@ opts, args = optparser.parse_args()
 ks_tools = os.environ['KS_TOOLS']
 
 # Allow the user to specify which tools to deploy.
-if len(sys.argv) > 1:
-    if sys.argv[1:] == ['.']:
+if args:
+    if args[0] == ['.']:
         tool_names = [os.path.basename(os.getcwd())]
     else:
-        tool_names = sys.argv[1:]
+        tool_names = list(args)
 else:
     tool_names = sorted(os.listdir(ks_tools))
 
