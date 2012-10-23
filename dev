@@ -68,7 +68,7 @@ else:
 # Can't just use -len(args) because -0 won't do what we want.
 bootstrap = sys.argv[1:len(sys.argv) - len(args)]
 bootstrap = os.environ.get('KS_DEV_ARGS', '').split() + bootstrap
-environ['KS_DEV_ARGS'] = ' '.join(x for x in bootstrap if x and x not in ('-e', '--export'))
+environ['KS_DEV_ARGS'] = ' '.join(x for x in bootstrap if x and x not in ('-e', '--export', '-b', '--bootstrap'))
 
 # Determine which new sites to add.
 if opts.sites:
