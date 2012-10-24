@@ -162,10 +162,13 @@ class ModuleLoader(object):
         # Manually set the package path, since the load_module won't handle this
         # for us since we put a stub into sys.modules.
         if self.description[-1] == imp.PKG_DIRECTORY:
+            # This is a package, so its __package__ is its full name.
             module.__path__ = [self.path]
             module.__package__ = self.namespaced_name
         else:
-            module.__package__ = self.namespaced_name.split('.', 1)[0]
+            # This is a module, so its __package__ is all the parts of its
+            # __name__ except the most specific.
+            module.__package__ = self.namespaced_name.rsplit('.', 1)[0]
                 
         # Finally load it.
         return imp.load_module(self.namespaced_name, self.file, self.path, self.description)
