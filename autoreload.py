@@ -12,7 +12,6 @@ import os
 import sys
 
 
-_reload_times = {}
 
 
 def _resolve_relative_name(module, relative):
@@ -44,44 +43,51 @@ def _iter_chain(module, visited=None):
     yield module
 
 
-def _is_outdated(module):
+def _is_outdated(module, reload_times):
+    
     # Find the file that this comes from.
     file_path = getattr(module, '__file__', '<notafile>')
     if file_path.endswith('.pyc') and os.path.exists(file_path[:-1]):
         file_path = file_path[:-1]
     elif not os.path.exists(file_path):
         file_path = None
+    
     if file_path is not None:
+        
         # Determine if we should reload via mtimes.
-        last_reload_time   = _reload_times.get(file_path)
+        last_reload_time   = reload_times.get(file_path)
         last_modified_time = os.path.getmtime(file_path)
-        _reload_times[file_path] = last_modified_time
+        
+        reload_times[file_path] = last_modified_time
+        
         if last_reload_time and last_reload_time < last_modified_time:
             return True
+    
     return False
+
+
+_reload_times = {}
 
 
 def is_outdated(module, recursive=True):
-    if not recursive:
-        return _is_outdated(module)
-    for mod in _iter_chain(module):
-        if _is_outdated(mod):
-            return True
-    return False
+    mods = _iter_chain(module) if recursive else [module]
+    reload_times = _reload_times.setdefault(module.__name__, {})
+    return any(_is_outdated(mod, reload_times) for mod in mods)
 
 
 def reload(module):
     
-    state = None
-    if hasattr(module, '__before_reload__'):
-        state = module.__before_reload__()
-    
     for mod in _iter_chain(module):
         print '# Reloading: %s at 0x%x' % (mod.__name__, id(mod))
+        
+        state = None
+        if hasattr(mod, '__before_reload__'):
+            state = mod.__before_reload__()
+        
         __builtin__.reload(mod)
-    
-    if hasattr(module, '__after_reload__'):
-        module.__after_reload__(state)
+        
+        if hasattr(mod, '__after_reload__'):
+            mod.__after_reload__(state)
 
 
 def autoreload(module):
