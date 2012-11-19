@@ -12,8 +12,6 @@ import os
 import sys
 
 
-
-
 def _resolve_relative_name(module, relative):
     if relative.startswith('.'):
         parts = module.split('.')
@@ -24,7 +22,7 @@ def _resolve_relative_name(module, relative):
     return relative
 
 
-def _iter_chain(module, visited=None):
+def _iter_children(module, visited=None):
     
     if visited is None:
         visited = set()
@@ -38,12 +36,29 @@ def _iter_chain(module, visited=None):
         name = _resolve_relative_name(module.__name__, name)
         child = sys.modules.get(name)
         if child is not None:
-            for x in _iter_chain(child, visited):
-                yield x
+            yield child
+
+
+def _iter_chain(module, visited=None):
+    
+    if visited is None:
+        visited = set()
+    
+    # Make sure to not hit the same module twice.
+    if module.__name__ in visited:
+        return
+    visited.add(module.__name__)
+    
+    for child in _iter_children(module, visited):
+        for x in _iter_chain(child, visited):
+            yield x
     yield module
 
 
-def _is_outdated(module, reload_times):
+_reload_times = {}
+
+
+def _is_outdated(module):
     
     # Find the file that this comes from.
     file_path = getattr(module, '__file__', '<notafile>')
@@ -55,10 +70,10 @@ def _is_outdated(module, reload_times):
     if file_path is not None:
         
         # Determine if we should reload via mtimes.
-        last_reload_time   = reload_times.get(file_path)
+        last_reload_time   = _reload_times.get(file_path)
         last_modified_time = os.path.getmtime(file_path)
         
-        reload_times[file_path] = last_modified_time
+        _reload_times[file_path] = last_modified_time
         
         if last_reload_time and last_reload_time < last_modified_time:
             return True
@@ -66,31 +81,43 @@ def _is_outdated(module, reload_times):
     return False
 
 
-_reload_times = {}
-
-
 def is_outdated(module, recursive=True):
     mods = _iter_chain(module) if recursive else [module]
-    reload_times = _reload_times.setdefault(module.__name__, {})
-    return any(_is_outdated(mod, reload_times) for mod in mods)
+    return any(_is_outdated(mod) for mod in mods)
 
 
 def reload(module):
     
-    for mod in _iter_chain(module):
-        print '# Reloading: %s at 0x%x' % (mod.__name__, id(mod))
+    print '# Reloading: %s at 0x%x' % (module.__name__, id(module))
         
-        state = None
-        if hasattr(mod, '__before_reload__'):
-            state = mod.__before_reload__()
+    state = None
+    if hasattr(module, '__before_reload__'):
+        state = module.__before_reload__()
         
-        __builtin__.reload(mod)
+    __builtin__.reload(module)
         
-        if hasattr(mod, '__after_reload__'):
-            mod.__after_reload__(state)
+    if hasattr(module, '__after_reload__'):
+        module.__after_reload__(state)
 
 
-def autoreload(module):
-    if is_outdated(module):
+def autoreload(module, visited=None):
+    
+    if visited is None:
+        visited = set()
+    
+    # Make sure to not hit the same module twice. Don't need to add it to
+    # visited because _iter_children will do that.
+    if module.__name__ in visited:
+        return
+    
+    # Give all children a chance to reload.
+    child_reloaded = False
+    for child in _iter_children(module, visited):
+        child_reloaded = autoreload(child, visited) or child_reloaded
+    
+    # Reload ourselves if any children did, or if we are out of date.
+    if child_reloaded or _is_outdated(module):
         reload(module)
+        return True
+
 
