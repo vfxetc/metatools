@@ -12,6 +12,7 @@ import os
 import py_compile
 import sys
 import time
+import re
 from subprocess import call, check_call
 
 try:
@@ -76,6 +77,47 @@ def git_output(repo, *args, **kwargs):
     cmd.extend(args)
     return check_output(cmd, **kwargs)
 
+def git_remotes(repo):
+    remotes = {}
+    for line in git_output(repo, 'remote', '-v').splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split()
+        remotes[parts[0]] = parts[1]
+    return remotes
+        
+def git_rev_parse(repo, original_name):
+    
+    # return git_output(repo, 'rev-parse', '--verify', original_name).strip()
+    
+    name = original_name
+    res = None
+    visited = set()
+    while not res or not re.match(r'^[0-9a-f]{40}$', res):
+        
+        if res and res.startswith('ref:'):
+            name = res[4:].strip()
+        
+        if name in visited:
+            raise ValueError('recursion in refs: %r at %r' % (name, res))
+        visited.add(name)
+        
+        for args in [
+            (repo, name),
+            (repo, 'refs/heads', name),
+            (repo, 'refs/remotes', name),
+        ]:
+            path = os.path.join(*args)
+            if os.path.exists(path):
+                res = open(path).read().strip()
+                break
+        else:
+            print colour("WARNING:", bg='yellow', bright=True, reset=True), "Could not directly parse rev %r from %r" % (name, original_name)
+            res = git_output(repo, 'rev-parse', '--verify', original_name).strip()
+    
+    return res or None
+        
 
 def compile_bytecode(fullname, debug=False, force=False, quiet=False):
     """Compile bytecode for given file.
@@ -119,12 +161,14 @@ def compile_bytecode(fullname, debug=False, force=False, quiet=False):
     
 
 optparser = optparse.OptionParser()
-optparser.add_option("--force", dest="force", action="store_true", default=False)
-optparser.add_option("--clean", dest="clean", action="store_true", default=False)
-optparser.add_option("--reset", dest="reset", action="store_true", default=False)
-optparser.add_option("--nopyc", dest="nopyc", action="store_true", default=False)
-optparser.add_option("--nomake", dest="nomake", action="store_true", default=False)
-optparser.add_option("--nosubmodules", dest="nosubmodules", action="store_true", default=False)
+optparser.add_option('-a', '--all', dest='all', action='store_true', default=False)
+optparser.add_option('--clean', dest='clean', action='store_true', default=False)
+optparser.add_option('-n', '--dry-run', dest='dry_run', action='store_true', default=False)
+optparser.add_option('-f', '--force', dest='force', action='store_true', default=False)
+optparser.add_option('--nomake', dest='nomake', action='store_true', default=False)
+optparser.add_option('--nopyc', dest='nopyc', action='store_true', default=False)
+optparser.add_option('--nosubmodules', dest='nosubmodules', action='store_true', default=False)
+optparser.add_option('--reset', dest='reset', action='store_true', default=False)
 opts, args = optparser.parse_args()
 
 
@@ -137,8 +181,17 @@ if args:
         tool_names = [os.path.basename(os.getcwd())]
     else:
         tool_names = list(args)
-else:
+elif opts.all:
     tool_names = sorted(os.listdir(ks_tools))
+else:
+    tool_names = set()
+    for dev_path in ('~/key_tools', '~/dev', '~/key_local_tool_development'):
+        dev_path = os.path.expanduser(dev_path)
+        if os.path.exists(os.path.join(dev_path)):
+            for name in os.listdir(dev_path):
+                if os.path.exists(os.path.join(dev_path, name, '.git')):
+                    tool_names.add(name)
+    tool_names = sorted(tool_names)
 
 
 for tool_name in tool_names:
@@ -149,22 +202,38 @@ for tool_name in tool_names:
     print '==>', colour(tool_name, fg='blue', reset=True)
     
     tool_path = os.path.join(ks_tools, tool_name)
+    if not os.path.exists(tool_path):
+        print colour('ERROR: Tool does not exist in $KS_TOOLS.', fg='red', reset=True)
+        continue
+    
     repo = os.path.join(tool_path, '.git')
     if not os.path.exists(repo):
-        print
-        print colour('ERROR: Not a git repo.', fg='red')
+        print colour('ERROR: Deployed tool is not a git repo.', fg='red', reset=True)
         continue
     
     # Get current commit to see if we need to do the cleanups later.
-    current_head = git_output(repo, 'rev-parse', '--verify', 'HEAD').strip()
+    current_head = git_rev_parse(repo, 'HEAD')
+    
+    # Get current master of the origin.
+    remotes = git_remotes(repo)
+    if 'origin' not in remotes:
+        print colour('ERROR: Could not find origin', fg='red', reset=True)
+        continue
+    if not os.path.exists(remotes['origin']):
+        print colour('ERROR: Found origin does not appear valid: %r' % remotes['origin'], fg='red', reset=True)
+        continue
+    origin_master = git_rev_parse(remotes['origin'], 'master')
+    
+    # Don't bother doing the merge or cleanups if we wouldn't move anyways.
+    if not opts.force and origin_master == current_head:
+        continue
+    
+    if opts.dry_run:
+        print 'Would merge.'
+        continue
     
     # Get the new commits.
     git_call(repo, 'fetch', 'origin')
-    
-    # Don't bother doing the merge or cleanups if we wouldn't move anyways.
-    origin_master = git_output(repo, 'rev-parse', '--verify', 'origin/master').strip()
-    if not opts.force and origin_master == current_head:
-        continue
     
     # Do the reset or merge.
     if opts.reset:
