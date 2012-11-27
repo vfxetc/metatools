@@ -263,12 +263,12 @@ for tool_name in tool_names:
         # Are we ahead?
         ahead = git_distance(dev_repo, dev_head, dev_origin_master)
         # ... or behind?
-        behind = git_distance(global_repo, dev_origin_master, deployed_head)
+        behind = git_distance(global_repo, deployed_head, dev_origin_master)
         
         if ahead:
             print colour('    You are ahead by %d commit%s.' % (ahead, 's' if ahead > 1 else ''), fg='green', reset=True)
         if behind:
-            warning('You are behind by %d commit%s.' % (-behind, 's' if behind < -1 else ''))
+            warning('You are behind by %d commit%s.' % (behind, 's' if behind > 1 else ''))
         
     # Don't bother doing the merge or cleanups if we wouldn't move anyways.
     if not opts.force and global_master == deployed_head:
