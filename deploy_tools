@@ -318,6 +318,7 @@ for tool_name in tool_names:
     # Find all Python source code and compile it to bytecode while removing
     # orphaned bytecode.
     if not opts.nopyc:
+        'Looking for Python sources...'
         for dir_path, dir_names, file_names in os.walk(tool_path):
             visited = set()
             for file_name in file_names:
