@@ -2,7 +2,7 @@
 # encoding: UTF-8
 """Deploy current versions of all tools within KS_TOOLS.
 
-Pulls the master branch from each repo's origin, cleans up any orphaned *.pyc
+Pulls the master branch from each deployed_repo's origin, cleans up any orphaned *.pyc
 files, and compiles any new *.py files.
 
 """
@@ -64,24 +64,30 @@ def colour(message, fg=None, bg=None, bright=False, reset=False):
         parts.extend((CSI, '0m'))
     return ''.join(parts)
 
+def error(message):
+    print colour('ERROR: %s' % message, fg='red', reset=True)
 
-def git_call(repo, *args, **kwargs):
-    kwargs.setdefault('cwd', os.path.dirname(repo))
-    cmd = ['git', '--git-dir', repo] 
+def warning(message):
+    print colour('WARNING:', bg='yellow', reset=True), str(message)
+
+
+def git_call(deployed_repo, *args, **kwargs):
+    kwargs.setdefault('cwd', os.path.dirname(deployed_repo))
+    cmd = ['git', '--git-dir', deployed_repo] 
     cmd.extend(args)
     return check_call(cmd, **kwargs)
 
 
-def git_output(repo, *args, **kwargs):
-    kwargs.setdefault('cwd', os.path.dirname(repo))
-    cmd = ['git', '--git-dir', repo] 
+def git_output(deployed_repo, *args, **kwargs):
+    kwargs.setdefault('cwd', os.path.dirname(deployed_repo))
+    cmd = ['git', '--git-dir', deployed_repo] 
     cmd.extend(args)
     return check_output(cmd, **kwargs)
 
 
-def git_remotes(repo):
+def git_remotes(deployed_repo):
     remotes = {}
-    for line in git_output(repo, 'remote', '-v').splitlines():
+    for line in git_output(deployed_repo, 'remote', '-v').splitlines():
         line = line.strip()
         if not line:
             continue
@@ -90,9 +96,9 @@ def git_remotes(repo):
     return remotes
 
 
-def git_rev_parse(repo, original_name):
+def git_rev_parse(deployed_repo, original_name):
     
-    # return git_output(repo, 'rev-parse', '--verify', original_name).strip()
+    # return git_output(deployed_repo, 'rev-parse', '--verify', original_name).strip()
     
     name = original_name
     res = None
@@ -107,26 +113,29 @@ def git_rev_parse(repo, original_name):
         visited.add(name)
         
         for args in [
-            (repo, name),
-            (repo, 'refs/heads', name),
-            (repo, 'refs/remotes', name),
+            (deployed_repo, name),
+            (deployed_repo, 'refs/heads', name),
+            (deployed_repo, 'refs/remotes', name),
         ]:
             path = os.path.join(*args)
             if os.path.exists(path):
                 res = open(path).read().strip()
                 break
         else:
-            print colour("WARNING:", bg='yellow', bright=True, reset=True), "Could not directly parse rev %r from %r in %r" % (name, original_name, repo)
-            res = git_output(repo, 'rev-parse', '--verify', original_name).strip()
+            warning("Could not directly parse rev %r from %r in %r" % (name, original_name, deployed_repo))
+            res = git_output(deployed_repo, 'rev-parse', '--verify', original_name).strip()
     
     return res or None
 
 
-def git_distance(repo, left, right):
-    out = git_output(repo, 'rev-list', '--left-right', '--count', '%s...%s' % (left, right))
+def git_distance(deployed_repo, left, right):
+    try:
+        out = git_output(deployed_repo, 'rev-list', '--left-right', '--count', '%s...%s' % (left, right))
+    except CalledProcessError:
+        return
     m = re.match(r'^\s*(\d+)\s+(\d+)\s*$', out)
     if not m:
-        # print colour("WARNING:", bg='yellow', bright=True, reset=True), 'Could not get rev distance from %r to %r in %r' % (left, right, repo)
+        # print colour("WARNING:", bg='yellow', bright=True, reset=True), 'Could not get rev distance from %r to %r in %r' % (left, right, deployed_repo)
         return None
     return int(m.group(1)) - int(m.group(2))
 
@@ -215,29 +224,54 @@ for tool_name in tool_names:
     
     tool_path = os.path.join(ks_tools, tool_name)
     if not os.path.exists(tool_path):
-        print colour('ERROR: Tool does not exist in $KS_TOOLS.', fg='red', reset=True)
+        error('Tool does not exist in $KS_TOOLS.')
         continue
     
-    repo = os.path.join(tool_path, '.git')
-    if not os.path.exists(repo):
-        print colour('ERROR: Deployed tool is not a git repo.', fg='red', reset=True)
+    deployed_repo = os.path.join(tool_path, '.git')
+    if not os.path.exists(deployed_repo):
+        error('Deployed tool is not a git deployed_repo.')
         continue
     
     # Get current commit to see if we need to do the cleanups later.
-    current_head = git_rev_parse(repo, 'HEAD')
+    deployed_head = git_rev_parse(deployed_repo, 'HEAD')
     
     # Get current master of the origin.
-    remotes = git_remotes(repo)
+    remotes = git_remotes(deployed_repo)
     if 'origin' not in remotes:
         print colour('ERROR: Could not find origin', fg='red', reset=True)
         continue
-    if not os.path.exists(remotes['origin']):
-        print colour('ERROR: Found origin does not appear valid: %r' % remotes['origin'], fg='red', reset=True)
+    global_repo = remotes['origin']
+    if not os.path.exists(global_repo):
+        print colour('ERROR: Found origin does not appear valid: %r' % global_repo, fg='red', reset=True)
         continue
-    origin_master = git_rev_parse(remotes['origin'], 'master')
+    global_master = git_rev_parse(global_repo, 'master')
     
+    # Take a peek at our development tools.
+    for dev_path in ('~/key_tools', '~/dev', '~/key_local_tool_development'):
+        dev_repo = os.path.join(os.path.expanduser(dev_path), tool_name, '.git')
+        if not os.path.exists(dev_repo):
+            continue
+        
+        dev_head = git_rev_parse(dev_repo, 'HEAD')
+        
+        # We have the deployed head, so whatevs.
+        if dev_head == deployed_head:
+            break
+
+        dev_origin_master = git_rev_parse(dev_repo, 'origin/master')
+        
+        # Are we ahead?
+        ahead = git_distance(dev_repo, dev_origin_master, dev_head)
+        # ... or behind?
+        behind = git_distance(global_repo, dev_origin_master, deployed_head)
+        
+        if ahead > 0:
+            print color('You are ahead by %d commit%s.' % (ahead, 's' if ahead > 1 else ''), bg='green', reset=True)
+        if behind < 0:
+            warning('You are behind by %d commit%s.' % (-behind, 's' if behind < -1 else ''))
+        
     # Don't bother doing the merge or cleanups if we wouldn't move anyways.
-    if not opts.force and origin_master == current_head:
+    if not opts.force and global_master == deployed_head:
         continue
     
     if opts.dry_run:
@@ -245,18 +279,18 @@ for tool_name in tool_names:
         continue
     
     # Get the new commits.
-    git_call(repo, 'fetch', 'origin')
+    git_call(deployed_repo, 'fetch', 'origin')
     
     # Do the reset or merge.
     if opts.reset:
         try:
-            git_call(repo, 'reset', '--hard', 'origin/master')
+            git_call(deployed_repo, 'reset', '--hard', 'origin/master')
         except CalledProcessError:
             print colour('ERROR: Git error during reset.', fg='red', reset=True)
             continue
     else:
         try:
-            git_call(repo, 'merge', '--ff-only', 'origin/master')
+            git_call(deployed_repo, 'merge', '--ff-only', 'origin/master')
         except CalledProcessError:
             print colour('ERROR: Git error during fast-forward (merge).', fg='red', reset=True)
             continue
@@ -264,7 +298,7 @@ for tool_name in tool_names:
     # Update and submodules.
     if not opts.nosubmodules:
         try:
-            git_call(repo, 'submodule', 'update', '--init', '--recursive')
+            git_call(deployed_repo, 'submodule', 'update', '--init', '--recursive')
         except CalledProcessError:
             print colour('ERROR: Git error during submodule update.', fg='red', reset=True)
             continue
@@ -273,9 +307,9 @@ for tool_name in tool_names:
     # do that ourselves, and documentation builds since that is very anoying.
     # The exclude logic is quite backwards from expected.
     if opts.clean:
-        git_call(repo, 'clean', '-dXf')
+        git_call(deployed_repo, 'clean', '-dXf')
         if not opts.nosubmodules:
-            git_call(repo, 'submodule', 'foreach', '--recursive', 'git', 'clean', '-dXf')
+            git_call(deployed_repo, 'submodule', 'foreach', '--recursive', 'git', 'clean', '-dXf')
     
     # Run a top-level Makefile if it exists.
     if not opts.nomake and os.path.exists(os.path.join(tool_path, 'Makefile')):
