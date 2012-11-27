@@ -70,12 +70,14 @@ def git_call(repo, *args, **kwargs):
     cmd = ['git', '--git-dir', repo] 
     cmd.extend(args)
     return check_call(cmd, **kwargs)
-    
+
+
 def git_output(repo, *args, **kwargs):
     kwargs.setdefault('cwd', os.path.dirname(repo))
     cmd = ['git', '--git-dir', repo] 
     cmd.extend(args)
     return check_output(cmd, **kwargs)
+
 
 def git_remotes(repo):
     remotes = {}
@@ -86,7 +88,8 @@ def git_remotes(repo):
         parts = line.split()
         remotes[parts[0]] = parts[1]
     return remotes
-        
+
+
 def git_rev_parse(repo, original_name):
     
     # return git_output(repo, 'rev-parse', '--verify', original_name).strip()
@@ -113,11 +116,20 @@ def git_rev_parse(repo, original_name):
                 res = open(path).read().strip()
                 break
         else:
-            print colour("WARNING:", bg='yellow', bright=True, reset=True), "Could not directly parse rev %r from %r" % (name, original_name)
+            print colour("WARNING:", bg='yellow', bright=True, reset=True), "Could not directly parse rev %r from %r in %r" % (name, original_name, repo)
             res = git_output(repo, 'rev-parse', '--verify', original_name).strip()
     
     return res or None
-        
+
+
+def git_distance(repo, left, right):
+    out = git_output(repo, 'rev-list', '--left-right', '--count', '%s...%s' % (left, right))
+    m = re.match(r'^\s*(\d+)\s+(\d+)\s*$', out)
+    if not m:
+        # print colour("WARNING:", bg='yellow', bright=True, reset=True), 'Could not get rev distance from %r to %r in %r' % (left, right, repo)
+        return None
+    return int(m.group(1)) - int(m.group(2))
+
 
 def compile_bytecode(fullname, debug=False, force=False, quiet=False):
     """Compile bytecode for given file.
