@@ -122,7 +122,7 @@ def git_rev_parse(deployed_repo, original_name):
                 res = open(path).read().strip()
                 break
         else:
-            warning("Could not directly parse rev %r from %r in %r" % (name, original_name, deployed_repo))
+            # warning("Could not directly parse rev %r from %r in %r" % (name, original_name, deployed_repo))
             res = git_output(deployed_repo, 'rev-parse', '--verify', original_name).strip()
     
     return res or None
@@ -224,7 +224,7 @@ for tool_name in tool_names:
     
     tool_path = os.path.join(ks_tools, tool_name)
     if not os.path.exists(tool_path):
-        error('Tool does not exist in $KS_TOOLS.')
+        warning('Tool does not exist in $KS_TOOLS.')
         continue
     
     deployed_repo = os.path.join(tool_path, '.git')
