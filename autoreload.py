@@ -12,8 +12,14 @@ import os
 import sys
 
 
-def _resolve_relative_name(module, relative):
+def _resolve_relative_name(package, module, relative):
     if relative.startswith('.'):
+        
+        # Add a dummy module onto the end if this is a package. It will be
+        # pulled off in the loop below.
+        if package == module:
+            module += '.dummy'
+        
         parts = module.split('.')
         while relative.startswith('.'):
             relative = relative[1:]
@@ -33,7 +39,7 @@ def _iter_children(module, visited=None):
     visited.add(module.__name__)
     
     for name in getattr(module, '__also_reload__', []):
-        name = _resolve_relative_name(module.__name__, name)
+        name = _resolve_relative_name(module.__package__, module.__name__, name)
         child = sys.modules.get(name)
         if child is not None:
             yield child
@@ -100,7 +106,7 @@ def reload(module):
         module.__after_reload__(state)
 
 
-def autoreload(module, visited=None):
+def autoreload(module, visited=None, force_self=None):
     
     if visited is None:
         visited = set()
@@ -116,7 +122,7 @@ def autoreload(module, visited=None):
         child_reloaded = autoreload(child, visited) or child_reloaded
     
     # Reload ourselves if any children did, or if we are out of date.
-    if child_reloaded or _is_outdated(module):
+    if force_self or child_reloaded or _is_outdated(module):
         reload(module)
         return True
 
