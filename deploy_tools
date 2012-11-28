@@ -198,7 +198,7 @@ ks_tools = os.environ['KS_TOOLS']
 
 # Allow the user to specify which tools to deploy.
 if args:
-    if args[0] == ['.']:
+    if args == ['.']:
         tool_names = [os.path.basename(os.getcwd())]
     else:
         tool_names = list(args)
@@ -213,7 +213,6 @@ else:
                 if os.path.exists(os.path.join(dev_path, name, '.git')):
                     tool_names.add(name)
     tool_names = sorted(tool_names)
-
 
 for tool_name in tool_names:
     
