@@ -264,7 +264,7 @@ for tool_name in tool_names:
         # ... or behind?
         behind = git_distance(global_repo, deployed_head, dev_origin_master)
         
-        if ahead:
+        if ahead and ahead > 0:
             print colour('    You are ahead by %d commit%s.' % (ahead, 's' if ahead > 1 else ''), fg='green', reset=True)
         if behind and behind > 0:
             warning('You are behind by %d commit%s.' % (behind, 's' if behind > 1 else ''))
