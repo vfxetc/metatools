@@ -136,8 +136,8 @@ def git_distance(deployed_repo, left, right):
     m = re.match(r'^\s*(\d+)\s+(\d+)\s*$', out)
     if not m:
         # print colour("WARNING:", bg='yellow', bright=True, reset=True), 'Could not get rev distance from %r to %r in %r' % (left, right, deployed_repo)
-        return None
-    return int(m.group(1)) - int(m.group(2))
+        return (0, 0)
+    return int(m.group(1)), int(m.group(2))
 
 
 def compile_bytecode(fullname, debug=False, force=False, quiet=False):
@@ -259,14 +259,21 @@ for tool_name in tool_names:
 
         dev_origin_master = git_rev_parse(dev_repo, 'origin/master')
         
-        # Are we ahead?
-        ahead = git_distance(dev_repo, dev_head, dev_origin_master)
-        # ... or behind?
-        behind = git_distance(global_repo, deployed_head, dev_origin_master)
+        # Are we ahead or behind?
         
-        if ahead and ahead > 0:
+        local_left, local_right = git_distance(dev_repo, dev_head, dev_origin_master)
+        remote_left, remote_right = git_distance(global_repo, dev_origin_master, deployed_head)
+        ahead = local_left + remote_left
+        behind = local_right + remote_right
+        
+        if ahead and behind:
+            warning('You and the tool have forked; please rebase.')
+            warning('There are %d local commit%s, and %d remote commit%s.' % (
+                ahead, 's' if ahead > 1 else '', behind, 's' if behind > 1 else ''
+            ))
+        elif ahead:
             print colour('    You are ahead by %d commit%s.' % (ahead, 's' if ahead > 1 else ''), fg='green', reset=True)
-        if behind and behind > 0:
+        elif behind:
             warning('You are behind by %d commit%s.' % (behind, 's' if behind > 1 else ''))
         
     # Don't bother doing the merge or cleanups if we wouldn't move anyways.
