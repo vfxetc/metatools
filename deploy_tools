@@ -65,10 +65,10 @@ def colour(message, fg=None, bg=None, bright=False, reset=False):
     return ''.join(parts)
 
 def error(message):
-    print colour('ERROR: %s' % message, fg='red', reset=True)
+    print '   ', colour('ERROR:', fg='red', reset=True), str(message)
 
 def warning(message):
-    print colour('WARNING:', bg='yellow', reset=True), str(message)
+    print '   ', colour('WARNING:', bg='yellow', reset=True), str(message)
 
 
 def git_call(deployed_repo, *args, **kwargs):
@@ -237,11 +237,11 @@ for tool_name in tool_names:
     # Get current master of the origin.
     remotes = git_remotes(deployed_repo)
     if 'origin' not in remotes:
-        print colour('ERROR: Could not find origin', fg='red', reset=True)
+        error('Could not find origin')
         continue
     global_repo = remotes['origin']
     if not os.path.exists(global_repo):
-        print colour('ERROR: Found origin does not appear valid: %r' % global_repo, fg='red', reset=True)
+        error('Found origin does not appear valid: %r' % global_repo)
         continue
     global_master = git_rev_parse(global_repo, 'master')
     
@@ -272,7 +272,7 @@ for tool_name in tool_names:
                 ahead, 's' if ahead > 1 else '', behind, 's' if behind > 1 else ''
             ))
         elif ahead:
-            print colour('    You are ahead by %d commit%s.' % (ahead, 's' if ahead > 1 else ''), fg='green', reset=True)
+            print '   ', colour('You are ahead by %d commit%s.' % (ahead, 's' if ahead > 1 else ''), fg='green', reset=True)
         elif behind:
             warning('You are behind by %d commit%s.' % (behind, 's' if behind > 1 else ''))
         
@@ -292,13 +292,13 @@ for tool_name in tool_names:
         try:
             git_call(deployed_repo, 'reset', '--hard', 'origin/master')
         except CalledProcessError:
-            print colour('ERROR: Git error during reset.', fg='red', reset=True)
+            error('Git error during reset.')
             continue
     else:
         try:
             git_call(deployed_repo, 'merge', '--ff-only', 'origin/master')
         except CalledProcessError:
-            print colour('ERROR: Git error during fast-forward (merge).', fg='red', reset=True)
+            error('Git error during fast-forward (merge).')
             continue
     
     # Update and submodules.
@@ -306,7 +306,7 @@ for tool_name in tool_names:
         try:
             git_call(deployed_repo, 'submodule', 'update', '--init', '--recursive')
         except CalledProcessError:
-            print colour('ERROR: Git error during submodule update.', fg='red', reset=True)
+            error('Git error during submodule update.')
             continue
     
     # Clean up temporary files we may have made, except for *.pyc since we will
