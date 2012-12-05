@@ -281,7 +281,7 @@ for tool_name in tool_names:
         continue
     
     if opts.dry_run:
-        print 'Would merge.'
+        print '    Deploy skipped due to dry run.'
         continue
     
     # Get the new commits.
