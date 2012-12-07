@@ -1,6 +1,9 @@
 import os
 import ast
 
+from . import utils
+
+
 def get_toplevel_imports(module):
     """Get the imports at the top-level of the given Python module.
 
@@ -26,11 +29,15 @@ def get_toplevel_imports(module):
     )
 
 
-def parse_toplevel_imports(source):
+def parse_toplevel_imports(source, package=None, module=None):
     """Get the imports at the top-level of the given Python module.
 
     :param str source: Python source code.
-    :returns list: The relative names of everything imported.
+    :param str package: The ``__package__`` this source is from.
+    :param str module: The ``__name__`` this source is from.
+
+    :returns list: The names of everything imported; absolute if package
+        and module are provided.
 
     """
 
@@ -44,6 +51,9 @@ def parse_toplevel_imports(source):
             base = node.module + '.' if node.module else ''
             base += '.' * node.level
             names.extend(base + alias.name for alias in node.names)
+
+    if package is not None and module is not None:
+        names = [utils.resolve_relative_name(package, module, name) for name in names]
 
     return names
 
