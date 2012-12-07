@@ -59,4 +59,16 @@ class TestDiscovery(TestCase):
             'relative.parent_relative',
         ])
 
+    def test_is_in_path(self):
+
+        name = __name__
+        directory = os.path.dirname(os.path.abspath(__file__))
+
+        self.assertFalse(is_in_path('does.not.exist', ['/']))
+        
+        self.assertTrue(is_in_path(name, ['/']))
+        self.assertTrue(is_in_path(name, [directory]))
+        self.assertFalse(is_in_path(name, [os.path.join(directory, 'subdirectory')]))
+
+
 

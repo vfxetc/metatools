@@ -1,5 +1,6 @@
 import os
 import ast
+import sys
 
 from . import utils
 
@@ -56,5 +57,33 @@ def parse_toplevel_imports(source, package=None, module=None):
         names = [utils.resolve_relative_name(package, module, name) for name in names]
 
     return names
+
+
+def is_in_path(name, paths):
+    """Determine if the given module/package is within the list of paths.
+
+    :param str name: A dotted module name; the module must be imported.
+    :param list paths: The paths that this module must exist in.
+    :returns bool: If the module can be found, and it exists on disk in
+        one of the paths given.
+
+    """
+
+    module = sys.modules.get(name)
+    if not module:
+        return False
+
+    path = getattr(module, '__file__')
+    if not path or not os.path.exists(path):
+        return False
+
+    path = os.path.abspath(path)[1:].split('/')
+    paths = [filter(None, os.path.abspath(x)[1:].split('/')) for x in paths]
+
+    print path
+    print paths
+
+    return any(path[:len(x)] == x for x in paths)
+
 
 
