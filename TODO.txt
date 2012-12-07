@@ -1,12 +1,20 @@
 
-Hooks:
-    
-    def __before_reload__(): return state
-    def __after_reload__(state): pass
-    
-    def __before_unload__(): pass
-    
-    __also_unload__ = ['other', 'modules']
-    __auto_reload_dependencies__ = ['other', 'modules']
-        - Do we need seperate unloading and reloading, or should all
-          dependencies be unloaded before reloading the main one?
+- Properly determine order to reload dependencies:
+
+    1. Construct a complete dependency graph. Essentially a dictionary
+       of modules to their ordered imports.
+
+    2. Check the mtime on every one of those files.
+
+    3. Reduce the dependency graph to only those modules that have been
+       changed, or depend on something that has. Have a reverse-mapping
+       (from modules to those which depend on them) so you can establish
+       a single set of everything that was modified or is affected.
+
+    4. Linearize the remaining graph with something like C3. See my
+       implementation: https://github.com/mikeboers/C3Linearize . We
+       will not be able to fully linearize it due to import cycles, so
+       we need to have some deterministic something for that occourance.
+       
+    5. Walk through that list in reverse order reloading everything.
+
