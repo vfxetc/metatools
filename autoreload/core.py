@@ -13,6 +13,7 @@ import sys
 
 
 def _resolve_relative_name(package, module, relative):
+    
     if relative.startswith('.'):
         
         # Add a dummy module onto the end if this is a package. It will be
