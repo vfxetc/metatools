@@ -47,7 +47,7 @@ def parse_toplevel_imports(source, package=None, module=None):
         if isinstance(node, ast.Import):
             names.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            base = '.' * node.level + node.module
+            base = '.' * node.level + (node.module or '')
             names.append(base)
             if node.module:
                 base += '.'
