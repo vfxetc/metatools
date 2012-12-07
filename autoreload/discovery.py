@@ -18,7 +18,7 @@ def get_toplevel_imports(module):
         return []
 
     return parse_toplevel_imports(
-        path,
+        open(path).read(),
         getattr(module, '__package__'),
         getattr(module, '__name__'),
     )
@@ -38,13 +38,20 @@ def parse_toplevel_imports(source, package=None, module=None):
 
     names = []
 
-    mod_ast = ast.parse(source)
+    try:
+        mod_ast = ast.parse(source)
+    except SyntaxError:
+        return []
+
     for node in mod_ast.body:
         if isinstance(node, ast.Import):
             names.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            base = node.module + '.' if node.module else ''
-            base += '.' * node.level
+            print node.level, repr(node.module), [x.name for x in node.names]
+            base = '.' * node.level + node.module
+            names.append(base)
+            if node.module:
+                base += '.'
             names.extend(base + alias.name for alias in node.names)
 
     if package is not None and module is not None:
@@ -53,7 +60,7 @@ def parse_toplevel_imports(source, package=None, module=None):
     return names
 
 
-def path_is_in_directory(path, directory):
+def path_is_in_directories(path, directories):
     """Is the given path within the given directory?
 
     :param str path: The path to test.
@@ -63,32 +70,9 @@ def path_is_in_directory(path, directory):
     """
 
     a = filter(None, os.path.abspath(path)[1:].split('/'))
-    b = filter(None, os.path.abspath(directory)[1:].split('/'))
-    return a[:len(b)] == b
+    bs = [filter(None, os.path.abspath(x)[1:].split('/')) for x in directories]
+    return any(a[:len(b)] == b for b in bs)
 
-
-def module_is_in_directories(name, directories):
-    """Determine if the given module/package is within the list of paths.
-
-    :param str name: A dotted module name; the module must be imported.
-    :param list paths: The paths that this module must exist in.
-    :returns bool: If the module can be found, and it exists on disk in
-        one of the paths given.
-
-    """
-
-    module = sys.modules.get(name)
-    if not module:
-        return False
-
-    path = getattr(module, '__file__')
-    if not path or not os.path.exists(path):
-        return False
-
-    # This is the same logic as `path_is_in_directory` above.
-    path = os.path.abspath(path)[1:].split('/')
-    directories = [filter(None, os.path.abspath(x)[1:].split('/')) for x in directories]
-    return any(path[:len(d)] == d for d in directories)
 
 
 

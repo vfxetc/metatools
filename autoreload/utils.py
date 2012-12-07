@@ -1,9 +1,10 @@
+import os
 
 
 def get_source_path(module):
 
     path = getattr(module, '__file__')
-    
+
     if not path:
         return
 
@@ -36,5 +37,5 @@ def resolve_relative_name(package, module, relative):
         while relative.startswith('.'):
             relative = relative[1:]
             parts.pop(-1)
-        relative = '.'.join(parts) + '.' + relative
+        relative = '.'.join(parts) + ('.' if relative else '') + relative
     return relative

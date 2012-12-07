@@ -18,6 +18,17 @@ class TestRelativeNames(TestCase):
             '.b.c',
         )
 
+    def test_relative(self):
+
+        self.assertEqual(
+            resolve_relative_name('package', 'package.module', '.'),
+            'package',
+        )
+        self.assertEqual(
+            resolve_relative_name('package', 'package', '.'),
+            'package',
+        )
+
     def test_from_module(self):
 
         self.assertEqual(
