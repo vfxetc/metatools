@@ -3,7 +3,7 @@ import os
 
 def get_source_path(module):
 
-    path = getattr(module, '__file__')
+    path = getattr(module, '__file__', None)
 
     if not path:
         return
@@ -38,4 +38,5 @@ def resolve_relative_name(package, module, relative):
             relative = relative[1:]
             parts.pop(-1)
         relative = '.'.join(parts) + ('.' if relative else '') + relative
+
     return relative
