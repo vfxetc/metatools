@@ -13,14 +13,8 @@ def get_toplevel_imports(module):
 
     """
 
-    path = getattr(module, '__file__')
-
-    # Go for the original source, not the precomiled one.
-    if path and path.endswith('.pyc'):
-        path = path[:-4] + '.py'
-
-    # Make sure we have something.
-    if not path or not os.path.exists(path):
+    path = utils.get_source_path(module)
+    if path is None:
         return []
 
     return parse_toplevel_imports(
@@ -59,7 +53,21 @@ def parse_toplevel_imports(source, package=None, module=None):
     return names
 
 
-def is_in_path(name, paths):
+def path_is_in_directory(path, directory):
+    """Is the given path within the given directory?
+
+    :param str path: The path to test.
+    :param str directory: The directory to test if the path is in.
+    :returns bool:
+
+    """
+
+    a = filter(None, os.path.abspath(path)[1:].split('/'))
+    b = filter(None, os.path.abspath(directory)[1:].split('/'))
+    return a[:len(b)] == b
+
+
+def module_is_in_directories(name, directories):
     """Determine if the given module/package is within the list of paths.
 
     :param str name: A dotted module name; the module must be imported.
@@ -77,13 +85,10 @@ def is_in_path(name, paths):
     if not path or not os.path.exists(path):
         return False
 
+    # This is the same logic as `path_is_in_directory` above.
     path = os.path.abspath(path)[1:].split('/')
-    paths = [filter(None, os.path.abspath(x)[1:].split('/')) for x in paths]
-
-    print path
-    print paths
-
-    return any(path[:len(x)] == x for x in paths)
+    directories = [filter(None, os.path.abspath(x)[1:].split('/')) for x in directories]
+    return any(path[:len(d)] == d for d in directories)
 
 
 

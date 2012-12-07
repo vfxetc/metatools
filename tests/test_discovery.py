@@ -59,16 +59,24 @@ class TestDiscovery(TestCase):
             'relative.parent_relative',
         ])
 
-    def test_is_in_path(self):
+    def test_path_is_in_directory(self):
+        self.assertTrue(path_is_in_directory('/path/to/file', '/'))
+        self.assertTrue(path_is_in_directory('/path/to/file', '/path'))
+        self.assertTrue(path_is_in_directory('/path/to/file', '/path/to'))
+        self.assertTrue(path_is_in_directory('/path/to/file', '/path/to/file'))
+        self.assertFalse(path_is_in_directory('/path/to/file', '/path/to/file/nope'))
+        self.assertFalse(path_is_in_directory('/path/to/file', '/another/path'))
+
+    def test_module_is_in_directories(self):
 
         name = __name__
         directory = os.path.dirname(os.path.abspath(__file__))
 
-        self.assertFalse(is_in_path('does.not.exist', ['/']))
-        
-        self.assertTrue(is_in_path(name, ['/']))
-        self.assertTrue(is_in_path(name, [directory]))
-        self.assertFalse(is_in_path(name, [os.path.join(directory, 'subdirectory')]))
+        self.assertFalse(module_is_in_directories('does.not.exist', ['/']))
+
+        self.assertTrue(module_is_in_directories(name, ['/']))
+        self.assertTrue(module_is_in_directories(name, [directory]))
+        self.assertFalse(module_is_in_directories(name, [os.path.join(directory, 'subdirectory')]))
 
 
 

@@ -1,5 +1,19 @@
 
 
+def get_source_path(module):
+
+    path = getattr(module, '__file__')
+    
+    if not path:
+        return
+
+    if path.endswith('.pyc'):
+        path = path[:-1]
+
+    if os.path.exists(path):
+        return path
+
+
 def resolve_relative_name(package, module, relative):
     """Convert a relative import path into an absolute one.
 
