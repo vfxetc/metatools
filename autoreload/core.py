@@ -11,22 +11,7 @@ import itertools
 import os
 import sys
 
-
-def _resolve_relative_name(package, module, relative):
-    
-    if relative.startswith('.'):
-        
-        # Add a dummy module onto the end if this is a package. It will be
-        # pulled off in the loop below.
-        if package == module:
-            module += '.dummy'
-        
-        parts = module.split('.')
-        while relative.startswith('.'):
-            relative = relative[1:]
-            parts.pop(-1)
-        relative = '.'.join(parts) + '.' + relative
-    return relative
+from .utils import resolve_relative_name
 
 
 def _iter_children(module, visited=None):
@@ -40,7 +25,7 @@ def _iter_children(module, visited=None):
     visited.add(module.__name__)
     
     for name in getattr(module, '__also_reload__', []):
-        name = _resolve_relative_name(module.__package__, module.__name__, name)
+        name = resolve_relative_name(module.__package__, module.__name__, name)
         child = sys.modules.get(name)
         if child is not None:
             yield child
