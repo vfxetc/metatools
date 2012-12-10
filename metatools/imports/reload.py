@@ -15,6 +15,8 @@ from . import utils
 from . import discovery
 
 
+_VERBOSE = False
+
 # Memoization stores.
 _reload_times = {}
 _child_lists = {}
@@ -40,9 +42,10 @@ def _iter_children(module, visited=None):
         # Get the absolute names of top-level imports.
         discovered_names = discovery.get_toplevel_imports(module)
         
-        # print '# DISCOVERY for', module.__name__
-        # for name in discovered_names:
-        #     print '#     ', name
+        if False and _VERBOSE:
+            print '# DISCOVERY for', module.__name__
+            for name in discovered_names:
+                print '#     ', name
 
         if discovered_names:
 
@@ -95,9 +98,10 @@ def _iter_children(module, visited=None):
 
         _child_lists[module.__name__] = dependencies
 
-        # print '# DEPENDENCIES FOR', module.__name__
-        # for x in dependencies:
-        #     print '#    ', x.__name__
+        if False and _VERBOSE:
+            print '# DEPENDENCIES FOR', module.__name__
+            for x in dependencies:
+                print '#    ', x.__name__
 
     for child in dependencies:
         yield child
@@ -172,9 +176,10 @@ def autoreload(module, visited=None, force_self=None, _depth=0):
     if module.__name__ in visited:
         return
     
-    # if not _depth:
-    #     print '# autoreload:', module.__name__
-    # print '# autoreload: -->' + '  ' * _depth, module.__name__
+    if _VERBOSE:
+        if not _depth:
+            print '# autoreload:', module.__name__
+        print '# autoreload: -->' + '  ' * _depth, module.__name__
 
     # Give all children a chance to reload.
     child_reloaded = False
@@ -185,5 +190,4 @@ def autoreload(module, visited=None, force_self=None, _depth=0):
     if force_self or child_reloaded or _is_outdated(module):
         reload(module)
         return True
-
 

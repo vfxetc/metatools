@@ -13,7 +13,9 @@ def get_toplevel_imports(module):
 
     """
 
+
     path = utils.get_source_path(module)
+
     if path is None:
         return []
 
@@ -21,10 +23,11 @@ def get_toplevel_imports(module):
         open(path).read(),
         getattr(module, '__package__'),
         getattr(module, '__name__'),
+        path=path,
     )
 
 
-def parse_toplevel_imports(source, package=None, module=None):
+def parse_toplevel_imports(source, package=None, module=None, path=None):
     """Get the imports at the top-level of the given Python module.
 
     :param str source: Python source code.
@@ -40,7 +43,8 @@ def parse_toplevel_imports(source, package=None, module=None):
 
     try:
         mod_ast = ast.parse(source)
-    except SyntaxError:
+    except SyntaxError as e:
+        print '# autoreload SyntaxError in %s: %s' % (path, e)
         return []
 
     for node in mod_ast.body:
@@ -71,7 +75,4 @@ def path_is_in_directories(path, directories):
     a = filter(None, os.path.abspath(path)[1:].split('/'))
     bs = [filter(None, os.path.abspath(x)[1:].split('/')) for x in directories]
     return any(a[:len(b)] == b for b in bs)
-
-
-
 
