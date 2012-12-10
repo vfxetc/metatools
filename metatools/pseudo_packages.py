@@ -1,3 +1,10 @@
+"""
+
+This is ripped directly from the key_base. It will not work in its
+current form.
+
+"""
+
 import imp
 import os
 import re
