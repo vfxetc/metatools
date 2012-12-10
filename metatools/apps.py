@@ -7,12 +7,13 @@ from subprocess import call
 
 import yaml
 
-from ks.core import environment
-
 
 build_time = datetime.datetime.now()
 absolute_self = os.path.abspath(__file__)
-local_tools = os.path.abspath(os.path.join(__file__, '..', '..', '..', '..'))
+
+# These two are dependant on the WesternX Python environment.
+local_tools = os.path.abspath(os.path.join(__file__, '..', '..', '..'))
+icons_dir = os.path.join(local_tools, 'key_base', '2d', 'icons')
 
 
 args = sys.argv[1:]
@@ -30,7 +31,7 @@ for cfg_file in args:
     
     # Get the icon, or look for one that matches the name.
     icon = config.get('icon') or name + '.icns'
-    icon = os.path.join(environment.get_base(), '2d', 'icons', icon)
+    icon = os.path.join(icons_dir, icon)
     icon = icon if os.path.exists(icon) else None
     
     # Get the command, defaulting to the name.
