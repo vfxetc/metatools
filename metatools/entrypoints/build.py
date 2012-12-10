@@ -177,4 +177,4 @@ if __name__ == '__main__':
         with open(os.path.join(bin_dir, name), 'w') as fh:
             fh.write(''.join(source))
         call(['chmod', '+x', os.path.join(bin_dir, name)])
-        
+

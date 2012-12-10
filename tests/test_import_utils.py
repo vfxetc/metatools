@@ -62,3 +62,4 @@ class TestRelativeNames(TestCase):
             resolve_relative_name('package.sub', 'package.sub', '..a'),
             'package.a',
         )
+

@@ -40,3 +40,4 @@ def resolve_relative_name(package, module, relative):
         relative = '.'.join(parts) + ('.' if relative else '') + relative
 
     return relative
+

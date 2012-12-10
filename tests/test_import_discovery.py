@@ -81,5 +81,3 @@ class TestDiscovery(TestCase):
         self.assertFalse(path_is_in_directories('/path/to/file', ['/path/to/file/nope']))
         self.assertFalse(path_is_in_directories('/path/to/file', ['/another/path']))
 
-
-

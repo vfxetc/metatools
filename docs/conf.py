@@ -265,6 +265,3 @@ intersphinx_mapping = {
     'main': (os.path.abspath(os.path.join(__file__, '../../../docs/_build/html')), None),
 }
 
-
-
-

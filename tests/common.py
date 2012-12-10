@@ -31,3 +31,4 @@ def dedent(docstring):
         trimmed.pop(0)
     # Return a single string:
     return '\n'.join(trimmed)
+

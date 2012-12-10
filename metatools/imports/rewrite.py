@@ -31,6 +31,15 @@ def module_name_for_path(path):
     while os.path.exists(os.path.join(head, '__init__.py')):
         head, tail = os.path.split(head)
         module = tail + '.' + module
+
+    # key_base pseudopackages; only the few that the external tools are
+    # in.
+    if '/key_base/' in head:
+        if '/maya/python/' in head:
+            return 'ks.maya.' + module
+        if '/key_base/python/' in head:
+            return 'ks.' + module
+
     return module
 
 
@@ -119,3 +128,4 @@ for arg in args:
         dir_names[:] = [x for x in dir_names if not x.startswith('.')]
         for file_name in file_names:
             process(dir_name, file_name)
+
