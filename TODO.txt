@@ -1,20 +1,42 @@
 
 - Properly determine order to reload dependencies:
 
-    1. Construct a complete dependency graph. Essentially a dictionary
-       of modules to their ordered imports.
+  1. Construct a complete dependency graph. Essentially a dictionary
+     of modules to their ordered imports.
 
-    2. Check the mtime on every one of those files.
+  2. Check the mtime on every one of those files.
 
-    3. Reduce the dependency graph to only those modules that have been
-       changed, or depend on something that has. Have a reverse-mapping
-       (from modules to those which depend on them) so you can establish
-       a single set of everything that was modified or is affected.
+  3. Reduce the dependency graph to only those modules that have been
+     changed, or depend on something that has. Have a reverse-mapping
+     (from modules to those which depend on them) so you can establish
+     a single set of everything that was modified or is affected.
 
-    4. Linearize the remaining graph with something like C3. See my
-       implementation: https://github.com/mikeboers/C3Linearize . We
-       will not be able to fully linearize it due to import cycles, so
-       we need to have some deterministic something for that occourance.
-       
-    5. Walk through that list in reverse order reloading everything.
+  4. Linearize the remaining graph with something like C3. See my
+     implementation: https://github.com/mikeboers/C3Linearize . We
+     will not be able to fully linearize it due to import cycles, so
+     we need to have some deterministic something for that occourance.
+     
+  5. Walk through that list in reverse order reloading everything.
+
+
+- pseudopackages
+
+    - For use within *.pth files::
+        import pseudopackages as pp; pp.register('ks.core', '.')
+        import pseudopackages as pp; pp.register('ks.maya', '../3d/maya/python')
+
+    - __site__.pseudopth::
+        ks.core: python
+        ks.maya: 3d/maya/python
+        ks.nuke: 2d/nuke/python
+        ks.systems: systems/python
+
+- merge sitecustomize into devtools.site_customize and expose it by
+  just having it sit outside the main package (via a symlink?)
+  then it can set its own __path__ using os.path.realpath
+
+
+- metatools.imports.compat
+  - register_rename(old_name, new_name)
+    adds some import hooks to deal with renames
 

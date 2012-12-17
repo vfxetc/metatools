@@ -42,7 +42,9 @@ def parse_toplevel_imports(source, package=None, module=None, path=None):
     names = []
 
     try:
-        mod_ast = ast.parse(source)
+        # Discard all trailing whitespace to avoid syntax errors due to
+        # too much white in the last line.
+        mod_ast = ast.parse(source.rstrip())
     except SyntaxError as e:
         print '# autoreload SyntaxError in %s: %s' % (path, e)
         return []
