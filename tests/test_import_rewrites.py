@@ -38,7 +38,7 @@ class TestImportRewrites(TestCase):
             'a': 'x',
         })
 
-    def test_direct_as_single_with_use(self):
+    def _test_direct_as_single_with_use(self):
         self.assertRewrite(dedent('''
             import old as mod
             old.func()
@@ -49,5 +49,23 @@ class TestImportRewrites(TestCase):
             mod.func()
         '''), {
             'old': 'new',
+        })
+
+    def test_import_func_from_single(self):
+        self.assertRewrite(dedent('''
+            from a import func
+        '''), dedent('''
+            from x import func
+        '''), {
+            'a': 'x',
+        })
+
+    def test_import_mod_from_single(self):
+        self.assertRewrite(dedent('''
+            from a import b
+        '''), dedent('''
+            from x import y
+        '''), {
+            'a.b': 'x.y',
         })
 

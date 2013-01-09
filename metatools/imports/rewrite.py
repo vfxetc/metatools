@@ -139,33 +139,64 @@ class Rewriter(object):
         self.substitutions[tag] = source
         return tag
 
-    def import_from(self, m):
-        print 'import_from:', m.groups()
-
-        source = m.group(0)
-        return self.add_substitution(source)
-
-    def direct_import(self, m):
-        print 'direct_import:', m.groups()
-
-        chunks = []
-        for chunk in m.group(1).split(','):
-
+    def split_as_block(self, block):
+        for chunk in block.split(','):
             name, as_ = (chunk.split('as') + [None])[:2]
             name = name.strip()
             as_ = as_ and as_.strip()
+            yield name, as_
 
-            new_name = self.convert_module(name) or name
-            chunks.append(' as '.join(filter(None, [new_name, as_])))
+    def import_from(self, m):
+        # print 'import_from:', m.groups()
 
-        return self.add_substitution('import ' + ', '.join(chunks))
+        base = m.group(1)
+        imports = []
+
+        # Convert the full names of every item.
+        for name, ident in self.split_as_block(m.group(2)):
+            full_name = base + '.' + name
+            imports.append((
+                self.convert_module(full_name) or full_name,
+                ident,
+            ))
+        
+        # Assert that every item shares the same prefix.
+        new_base = imports[0][0].split('.')[:-1]
+        if any(x[0].split('.')[:-1] != new_base for x in imports[1:]):
+            raise ValueError('conflicting rewrites in single import')
+
+        # Rebuild the "as" block.
+        imports = [(name.split('.')[-1], ident) for name, ident in imports]
+        imports = [('%s as %s' % (name, ident) if ident else name) for name, ident in imports]
+
+        # Format the final source.
+        return self.add_substitution('from %s import %s' % (
+            '.'.join(new_base),
+            ', '.join(imports)
+        ))
+
+    def direct_import(self, m):
+        # print 'direct_import:', m.groups()
+
+        imports = []
+
+        # Convert the full names of every item.
+        for name, ident in self.split_as_block(m.group(1)):
+            imports.append((
+                self.convert_module(name) or name,
+                ident,
+            ))
+
+        # Rebuild the "as" block.
+        imports = [('%s as %s' % (name, ident) if ident else name) for name, ident in imports]
+
+        # Format the final source.
+        return self.add_substitution('import ' + ', '.join(imports))
 
     def usage(self, m):
-        print 'usage:', m.group(0)
-
+        # print 'usage:', m.group(0)
         name = m.group(0)
         name = self.convert_identifier(name) or name
-
         return name
 
     def convert_module(self, name):
@@ -173,7 +204,6 @@ class Rewriter(object):
         for old, new in self.mapping.iteritems():
             old_parts = old.split('.')
             if parts[:len(old_parts)] == old_parts:
-                # self.fixed_count += 1
                 return '.'.join([new] + parts[len(old_parts):])
 
     def convert_identifier(self, name):
@@ -181,7 +211,6 @@ class Rewriter(object):
         for old, new in self.mapping.iteritems():
             old_parts = old.split('.')
             if parts[:len(old_parts)] == old_parts:
-                # self.fixed_count += 1
                 return '.'.join([new] + parts[len(old_parts):])
 
 
