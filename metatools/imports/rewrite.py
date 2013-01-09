@@ -147,9 +147,10 @@ class Rewriter(object):
             yield name, as_
 
     def import_from(self, m):
-        # print 'import_from:', m.groups()
 
-        base = m.group(1)
+        _, base = resolve_relative(m.group(1), self.module_name)
+        print 'import_from:', m.groups(), repr(base)
+        
         imports = []
 
         # Convert the full names of every item.

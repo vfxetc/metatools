@@ -5,8 +5,8 @@ from metatools.imports.rewrite import rewrite
 
 class TestImportRewrites(TestCase):
 
-    def assertRewrite(self, original, target, changes, *args):
-        new = rewrite(original, changes)
+    def assertRewrite(self, original, target, changes, module_name=None, *args):
+        new = rewrite(original, changes, module_name)
         self.assertEqual(new, target, *args)
 
     def test_passthrough(self):
@@ -38,19 +38,6 @@ class TestImportRewrites(TestCase):
             'a': 'x',
         })
 
-    def _test_direct_as_single_with_use(self):
-        self.assertRewrite(dedent('''
-            import old as mod
-            old.func()
-            mod.func()
-        '''), dedent('''
-            import new as mod
-            old.func()
-            mod.func()
-        '''), {
-            'old': 'new',
-        })
-
     def test_import_func_from_single(self):
         self.assertRewrite(dedent('''
             from a import func
@@ -68,4 +55,15 @@ class TestImportRewrites(TestCase):
         '''), {
             'a.b': 'x.y',
         })
+
+    def test_import_relative(self):
+        self.assertRewrite(dedent('''
+            from . import c
+        '''), dedent('''
+            from a.b import x
+        '''), {
+            'a.b.c': 'a.b.x',
+        },
+            'a.b.mod',
+        )
 
