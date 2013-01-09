@@ -8,6 +8,19 @@ import lib2to3.pgen2
 import lib2to3.pygram
 import lib2to3.pytree
 import hashlib
+import difflib
+
+
+def diff_texts(a, b, filename):
+    """Return a unified diff of two strings."""
+    a = a.splitlines()
+    b = b.splitlines()
+    return '\n'.join(difflib.unified_diff(
+        a, b,
+        filename, filename,
+        "(original)", "(refactored)",
+        lineterm="",
+    ))
 
 
 def module_name_for_path(path):
@@ -108,7 +121,7 @@ class Rewriter(object):
         import\s+
         (
             (?:,\s*)? # Splitting consecutive imports.
-            [\w\.]+ # The thing being imported.
+            \w+ # The thing being imported.
             (?:\s+as\s+\w+\s*?)? # It's new name.
         )
     ''', re.X)
@@ -141,16 +154,16 @@ class Rewriter(object):
 
     def split_as_block(self, block):
         for chunk in block.split(','):
-            name, as_ = (chunk.split('as') + [None])[:2]
+            name, as_ = (re.split(r'\s+as\s+', chunk) + [None])[:2]
             name = name.strip()
             as_ = as_ and as_.strip()
             yield name, as_
 
     def import_from(self, m):
 
-        _, base = resolve_relative(m.group(1), self.module_name)
-        print 'import_from:', m.groups(), repr(base)
-        
+        # print 'import_from:', m.groups()
+        was_relative, base = resolve_relative(m.group(1), self.module_name)
+
         imports = []
 
         # Convert the full names of every item.
@@ -166,15 +179,28 @@ class Rewriter(object):
         if any(x[0].split('.')[:-1] != new_base for x in imports[1:]):
             raise ValueError('conflicting rewrites in single import')
 
+        # Restore the relative levels.
+        if was_relative:
+            new_base = self.make_relative(new_base)
+        else:
+            new_base = '.'.join(new_base)
+
         # Rebuild the "as" block.
         imports = [(name.split('.')[-1], ident) for name, ident in imports]
         imports = [('%s as %s' % (name, ident) if ident else name) for name, ident in imports]
 
         # Format the final source.
         return self.add_substitution('from %s import %s' % (
-            '.'.join(new_base),
+            new_base,
             ', '.join(imports)
         ))
+
+    def make_relative(self, target):
+        base = (self.convert_module(self.module_name) or self.module_name).split('.')
+        while target and base and target[0] == base[0]:
+            target = target[1:]
+            base = base[1:]
+        return '.' * len(base) + '.'.join(target)
 
     def direct_import(self, m):
         # print 'direct_import:', m.groups()
@@ -219,9 +245,8 @@ class Rewriter(object):
 
 def main():
 
-    opt_parser = optparse.OptionParser(usage="%prog from:to... path...")
-    opt_parser.add_option('-n', '--dry-run', dest='dry_run', action='store_true', default=False)
-    opt_parser.add_option('-v', '--verbose', dest='verbose', action='store_true', default=False)
+    opt_parser = optparse.OptionParser(usage="%prog [options] from:to... path...")
+    opt_parser.add_option('-w', '--write', action='store_true')
     opts, args = opt_parser.parse_args()
 
     renames = []
@@ -292,15 +317,14 @@ def main():
         visited_paths.add(path)
 
         module_name = module_name_for_path(path)
-        print '%s (%s)' % (module_name, path)
+        original = open(path).read()
+        refactored = rewrite(original, dict(renames), module_name)
 
-        fixer = Fixer(module_name)
-        source = open(path).read()
-        source, abs_count = absolute_re.subn(fixer.absolute, source)
-        source, rel_count = relative_re.subn(fixer.relative, source)
-        if fixer.fixed_count and not opts.dry_run:
-            open(path, 'w').write(source)
-
+        if refactored != original:
+            if opts.write:
+                print 'WRITE'
+            else:
+                print diff_texts(original, refactored, path)
 
     for arg in args:
         process(None, arg)
@@ -308,4 +332,8 @@ def main():
             dir_names[:] = [x for x in dir_names if not x.startswith('.')]
             for file_name in file_names:
                 process(dir_name, file_name)
+
+
+if __name__ == '__main__':
+    main()
 

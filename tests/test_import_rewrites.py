@@ -9,7 +9,7 @@ class TestImportRewrites(TestCase):
         new = rewrite(original, changes, module_name)
         self.assertEqual(new, target, *args)
 
-    def test_passthrough(self):
+    def test_passthrough_abs(self):
         src = dedent('''
             import a.b.c
             from a import b
@@ -17,6 +17,13 @@ class TestImportRewrites(TestCase):
             a.b.b_func()
         ''')
         self.assertRewrite(src, src, {})
+
+    def test_passthrough_rel(self):
+        src = dedent('''
+            from . import func
+            from ..a.b import Class
+        ''')
+        self.assertRewrite(src, src, {}, 'package.module.sub')
 
     def test_direct_singles(self):
         self.assertRewrite(dedent('''
@@ -60,7 +67,7 @@ class TestImportRewrites(TestCase):
         self.assertRewrite(dedent('''
             from . import c
         '''), dedent('''
-            from a.b import x
+            from . import x
         '''), {
             'a.b.c': 'a.b.x',
         },
