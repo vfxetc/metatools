@@ -261,47 +261,6 @@ def main():
         opt_parser.print_usage()
         exit(1)
 
-
-
-
-
-
-
-    class Fixer(object):
-
-        def __init__(self, module_name):
-            self.module_name = module_name
-            self.fixed_count = 0
-
-        def absolute(self, m):
-            name = m.group(2)
-            conv = self.convert(name)
-            if conv is not None:
-                print '\tabs: %s -> %s' % (name, conv)
-                return '%s%s%s' % (m.group(1), conv, m.group(3))
-            return m.group(0)
-
-        def relative(self, m):
-            name = m.group(2)
-            try:
-                levels, abs_name = resolve_relative(name, self.module_name)
-            except IndexError:
-                return m.group(0)
-            conv = self.convert(abs_name)
-            if conv is not None:
-                if levels:
-                    target = conv.split('.')
-                    base = (self.convert(self.module_name) or self.module_name).split('.')
-                    while target and base and target[0] == base[0]:
-                        target = target[1:]
-                        base = base[1:]
-                    conv = '.' * len(base) + '.'.join(target)
-                print '\trel: %s -> %s' % (name, conv)
-                return '%s%s%s' % (m.group(1), conv, m.group(3))
-            return m.group(0)
-
-
-
     visited_paths = set()
 
     def process(dir_name, path):
