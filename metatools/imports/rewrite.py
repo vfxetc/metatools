@@ -1,14 +1,15 @@
 import re
 import optparse
 import os
-import functools
 import token
 import itertools
-import lib2to3.pgen2
+import lib2to3.pgen2.tokenize
 import lib2to3.pygram
 import lib2to3.pytree
 import hashlib
 import difflib
+import traceback
+from cStringIO import StringIO
 
 
 def diff_texts(a, b, filename):
@@ -58,9 +59,11 @@ def resolve_relative(relative, module):
 
 def _iter_chunked_source(source):
     driver = lib2to3.pgen2.driver.Driver(lib2to3.pygram.python_grammar, lib2to3.pytree.convert)
+    string_io = StringIO(source)
+    encoding, _ = lib2to3.pgen2.tokenize.detect_encoding(string_io.readline)
     tree = driver.parse_string(source)
     for is_source, group in itertools.groupby(_iter_chunked_node(tree), lambda (is_source, _): is_source):
-        yield is_source, ''.join(value for _, value in group)
+        yield is_source, ''.join((value.encode(encoding) if isinstance(value, unicode) else value) for _, value in group)
 
 
 def _iter_chunked_node(node):
@@ -93,8 +96,6 @@ def rewrite(source, mapping, module_name=None, non_source=False):
     # that we won't.
     for is_source, source in _iter_chunked_source(source):
 
-        # print ('#' if not is_source else ' '), unicode(source).encode('unicode-escape')
-
         # Don't bother looking in comments and strings.
         if is_source:
             rewritten.append(rewriter(source))
@@ -109,9 +110,12 @@ class Rewriter(object):
     _direct_import_re = re.compile(r'''
         import\s+
         (
-            (?:,\s*)? # Splitting consecutive imports.
-            [\w\.]+ # The thing being imported.
-            (?:\s+as\s+\w+\s*?)? # It's new name.
+            (?:
+                (?:,\s*)? # Splitting consecutive imports.
+                [\w\.]+ # The thing being imported.
+                (?:\s+as\s+\w+\s*?)? # It's new name.
+            | \*
+            )+
         )
     ''', re.X)
 
@@ -120,9 +124,12 @@ class Rewriter(object):
         ([\w\.]+)\s+
         import\s+
         (
-            (?:,\s*)? # Splitting consecutive imports.
-            \w+ # The thing being imported.
-            (?:\s+as\s+\w+\s*?)? # It's new name.
+            (?:
+                (?:,\s*)? # Splitting consecutive imports.
+                \w+ # The thing being imported.
+                (?:\s+as\s+\w+\s*?)? # It's new name.
+            | \*
+            )+
         )
     ''', re.X)
 
@@ -145,6 +152,7 @@ class Rewriter(object):
 
         for from_, to in self.substitutions.iteritems():
             source = source.replace(from_, to)
+
         return source
 
     def add_substitution(self, source):
@@ -262,6 +270,7 @@ def main():
         exit(1)
 
     visited_paths = set()
+    changed = set()
 
     def process(dir_name, path):
 
@@ -275,22 +284,37 @@ def main():
             return
         visited_paths.add(path)
 
+        print '#', path
+
         module_name = module_name_for_path(path)
-        original = open(path).read()
+        original = open(path).read().rstrip() + '\n'
         refactored = rewrite(original, dict(renames), module_name)
 
-        if refactored != original:
+        if re.sub(r'\s+', '', refactored) != re.sub(r'\s+', '', original):
+            print diff_texts(original, refactored, path)
             if opts.write:
-                print 'WRITE'
-            else:
-                print diff_texts(original, refactored, path)
+                with open(path, 'wb') as fh:
+                    fh.write(refactored)
 
     for arg in args:
-        process(None, arg)
+
+        try:
+            process(None, arg)
+        except Exception:
+            print '# ERROR during', arg
+            traceback.print_exc()
+
         for dir_name, dir_names, file_names in os.walk(arg):
             dir_names[:] = [x for x in dir_names if not x.startswith('.')]
             for file_name in file_names:
-                process(dir_name, file_name)
+                try:
+                    process(dir_name, file_name)
+                except Exception:
+                    print '# ERROR during', os.path.join(dir_name, file_name)
+                    traceback.print_exc()
+
+    print 'Modified (%d)' % len(changed)
+    print '\n'.join(sorted(changed))
 
 
 if __name__ == '__main__':

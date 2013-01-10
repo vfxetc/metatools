@@ -1,6 +1,5 @@
 import os
 import ast
-import sys
 
 from . import utils
 

@@ -7,7 +7,6 @@ unload those dependencies on reload.
 """
 
 import __builtin__
-import itertools
 import os
 import sys
 

@@ -7,7 +7,6 @@ current form.
 
 import imp
 import os
-import re
 import sys
 import types
 
@@ -231,8 +230,8 @@ def test():
         try:
             module1 = __import__(namespaced, fromlist=['.'])
             module2 = __import__(canonical, fromlist=['.'])
-            module3 = __import__(namespaced, fromlist=['.'])
-            module4 = __import__(canonical, fromlist=['.'])
+            # module3 = __import__(namespaced, fromlist=['.'])
+            # module4 = __import__(canonical, fromlist=['.'])
         except ImportError, e:
             print 'FAIL', repr(e)
             traceback.print_exc()
@@ -252,4 +251,8 @@ def test():
     import importtest
     print 'RELOAD'
     reload(ks.core.importtest)
+
+    # Silence pyflakes
+    assert importtest
+    
 
