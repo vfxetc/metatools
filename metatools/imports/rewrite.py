@@ -1,3 +1,6 @@
+from __future__ import print_function
+
+import sys
 import re
 import optparse
 import os
@@ -284,14 +287,14 @@ def main():
             return
         visited_paths.add(path)
 
-        print '#', path
+        print('#', path, file=sys.stderr)
 
         module_name = module_name_for_path(path)
         original = open(path).read().rstrip() + '\n'
         refactored = rewrite(original, dict(renames), module_name)
 
         if re.sub(r'\s+', '', refactored) != re.sub(r'\s+', '', original):
-            print diff_texts(original, refactored, path)
+            print(diff_texts(original, refactored, path))
             if opts.write:
                 with open(path, 'wb') as fh:
                     fh.write(refactored)
@@ -301,7 +304,7 @@ def main():
         try:
             process(None, arg)
         except Exception:
-            print '# ERROR during', arg
+            print('# ERROR during', arg, file=sys.stderr)
             traceback.print_exc()
 
         for dir_name, dir_names, file_names in os.walk(arg):
@@ -310,11 +313,11 @@ def main():
                 try:
                     process(dir_name, file_name)
                 except Exception:
-                    print '# ERROR during', os.path.join(dir_name, file_name)
+                    print('# ERROR during', os.path.join(dir_name, file_name), file=sys.stderr)
                     traceback.print_exc()
 
-    print 'Modified (%d)' % len(changed)
-    print '\n'.join(sorted(changed))
+    print('Modified (%d)' % len(changed), file=sys.stderr)
+    print('\n'.join(sorted(changed)), file=sys.stderr)
 
 
 if __name__ == '__main__':
