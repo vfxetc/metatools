@@ -4,29 +4,32 @@ This also allows for some state retention in reloaded modules, for modules
 to specify dependencies that must be checked for being outdated as well, and to
 unload those dependencies on reload.
 
-This is not perfect, and it is known to cause numerous issues, however we have
-found that the problems it brings up are minor in comparison to the speed boost
-it tends to give us.
-
 There are two ways that we use to track if something should be reloaded, the
-last modification time of a file, and an abstract counter for when modules
-reloaded relative to each other.
+last modification time of a file, and the last time we reloaded a module.
 
 The modification time is to determine if a module has actually changed, and if
 it is newer than a previously seen time, then that module will be reloaded.
 
-Every module reload will store a "counter" which is higher than all other
-counters (determined at the start of an autoreload cycle). Then, in another
-autoreload cycle, another module can see when it's dependencies changes by
-comparing its counter with the dependencies. If a dependency was reloaded, then
-reload ourselves and set our counter a little higher.
+Every module reload will store the time at which it reloads (determined at the
+start of an autoreload cycle). Then, in another autoreload cycle, another
+module can see when it's dependencies changes by comparing its reload time with
+the dependency's. If a dependency was reloaded, then reload ourselves as well.
+
+This is not perfect, and it is known to cause numerous issues (e.g. circular
+imports cause some strange problems), however we have found that the problems
+it brings up are minor in comparison to the speed boost it tends to give us
+while in active development.
+
+A better algorithm would construct a full module graph (it would not be
+acyclic), and iteratively expand the region that must be reloaded. Then it
+would linearize the dependencies and reload everything in a big chain.
 
 """
 
 import __builtin__
 import os
 import sys
-import itertools
+import time
 
 from . import utils
 from . import discovery
@@ -35,27 +38,20 @@ from . import discovery
 _VERBOSE = False
 
 # Memoization stores.
-_reload_counters = {}
-_modification_counters = {}
+_reload_times = {}
+_modification_times = {}
 _child_lists = {}
 
 
 def __before_reload__():
-    return _reload_counters, _modification_counters, _child_lists
+    return _reload_times, _modification_times, _child_lists
 
 
 def __after_reload__(state):
     state = state or ()
-    for src, dst in zip(state, (_reload_counters, _modification_counters, _child_lists)):
+    for src, dst in zip(state, (_reload_times, _modification_times, _child_lists)):
         for k, v in src.iteritems():
             dst.setdefault(k, v)
-
-
-def _next_counter():
-    if not _reload_counters:
-        return 1
-    else:
-        return 1 + max(_reload_counters.itervalues())
 
 
 def _iter_children(module, visited=None):
@@ -168,12 +164,12 @@ def _is_outdated(module):
     if file_path is not None:
         
         # Determine if we should reload via mtimes.
-        last_modified_counter   = _modification_counters.get(file_path)
-        modified_counter = os.path.getmtime(file_path)
+        last_modified_time   = _modification_times.get(file_path)
+        modified_time = os.path.getmtime(file_path)
         
-        _modification_counters[file_path] = modified_counter
+        _modification_times[file_path] = modified_time
         
-        if last_modified_counter and last_modified_counter < modified_counter:
+        if last_modified_time and last_modified_time < modified_time:
             return True
     
     return False
@@ -186,7 +182,7 @@ def is_outdated(module, recursive=True):
 
 
 
-def reload(module, _counter=None):
+def reload(module, _time=None):
     
     print '# autoreload: Reloading: %s at 0x%x' % (module.__name__, id(module))
         
@@ -200,15 +196,15 @@ def reload(module, _counter=None):
     _child_lists.pop(module.__name__, None)
 
     # Remember when it was reloaded.
-    _reload_counters[module.__name__] = _counter or _next_counter()
+    _reload_times[module.__name__] = _time or time.time()()
     if _VERBOSE:
-        print '\n'.join('%s: %s' % (t, n) for n, t in sorted(_reload_counters.iteritems()))
+        print '\n'.join('%s: %s' % (t, n) for n, t in sorted(_reload_times.iteritems()))
 
     if hasattr(module, '__after_reload__'):
         module.__after_reload__(state)
 
 
-def autoreload(module, visited=None, force_self=None, _depth=0, _counter=None):
+def autoreload(module, visited=None, force_self=None, _depth=0, _time=None):
     
     if visited is None:
         visited = set()
@@ -217,32 +213,33 @@ def autoreload(module, visited=None, force_self=None, _depth=0, _counter=None):
     # visited because _iter_children will do that.
     if module.__name__ in visited:
         return
+    visited.add(module.__name__)
     
-    _counter = _counter or _next_counter()
+    _time = _time or time.time()
 
     if _VERBOSE:
         if not _depth:
             print '# autoreload:', module.__name__
         print '# autoreload: -->' + '  ' * _depth, module.__name__
 
-    my_counter = _reload_counters.get(module.__name__)
-    if _VERBOSE and my_counter:
-        print '# autoreload: %s last reloaded at %s' % (module.__name__, my_counter)
+    my_time = _reload_times.get(module.__name__)
+    if _VERBOSE and my_time:
+        print '# autoreload: %s last reloaded at %s' % (module.__name__, my_time)
 
     # Give all children a chance to reload.
     child_reloaded = False
-    for child in _iter_children(module, visited):
-        child_reloaded = autoreload(child, visited, _depth=_depth+1, _counter=_counter) or child_reloaded
+    for child in _iter_children(module):
+        child_reloaded = autoreload(child, visited, _depth=_depth+1, _time=_time) or child_reloaded
 
         # Reload if the child has been reloaded before us, even if not this time.
         if not child_reloaded:
-            child_counter = _reload_counters.get(child.__name__)
-            child_reloaded = child_counter and (not my_counter or child_counter > my_counter)
+            child_time = _reload_times.get(child.__name__)
+            child_reloaded = child_time and (not my_time or child_time > my_time)
             if child_reloaded:
                 print '# autoreload: Child %s of %s was previously reloaded' % (child.__name__, module.__name__)
     
     # Reload ourselves if any children did, or if we are out of date.
     if force_self or child_reloaded or _is_outdated(module):
-        reload(module, _counter=_counter)
+        reload(module, _time=_time)
         return True
 
