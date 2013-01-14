@@ -1,6 +1,6 @@
 from common import *
 
-from autoreload.utils import *
+from metatools.imports.utils import *
 
 
 class TestRelativeNames(TestCase):

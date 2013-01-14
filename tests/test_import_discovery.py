@@ -1,6 +1,6 @@
 from common import *
 
-from autoreload.discovery import *
+from metatools.imports.discovery import *
 
 
 class TestDiscovery(TestCase):
