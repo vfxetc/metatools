@@ -1,12 +1,12 @@
 .. _index:
 
-``entrypoints`` API Reference
-=============================
+Meta-Tools
+==========
 
-``entrypoints.search``
-----------------------
+.. toctree::
+    :maxdepth: 2
 
-.. automodule:: entrypoints.search
-    :members:
-
-
+    apps
+    entrypoints
+    imports
+    lint

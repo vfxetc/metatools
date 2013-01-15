@@ -24,6 +24,43 @@ A better algorithm would construct a full module graph (it would not be
 acyclic), and iteratively expand the region that must be reloaded. Then it
 would linearize the dependencies and reload everything in a big chain.
 
+The tricky part is since `module discovery <discovery>` does not reveal the
+actual intensions of the code, e.g.:
+
+.. graphviz::
+
+        digraph actual_graph {
+
+        "__init__" -> "core"
+
+        "core" -> "utils"
+
+        "gui" -> "core"
+        "gui" -> "utils"
+
+        {rank=same; "core" "gui" "utils"}
+    }
+
+but all the dependancies that it is actually capable of, e.g.:
+
+.. graphviz::
+
+    digraph discovered_graph {
+
+        "__init__" -> "core"
+
+        "core" -> "__init__"
+        "core" -> "utils"
+
+        "gui" -> "__init__"
+        "gui" -> "core"
+        "gui" -> "utils"
+
+        {rank=same; "core" "gui" "utils"}
+    }
+
+
+
 """
 
 import __builtin__
