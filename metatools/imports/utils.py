@@ -1,6 +1,20 @@
 import os
 
 
+def get_name_for_path(path):
+
+    path = os.path.splitext(path)[0]
+
+    head, base = os.path.split(path)
+    name = [base]
+
+    while head and os.path.exists(os.path.join(head, '__init__.py')):
+        head, base = os.path.split(head)
+        name.insert(0, base)
+    
+    return '.'.join(name)
+
+
 def get_source_path(module):
 
     path = getattr(module, '__file__', None)
