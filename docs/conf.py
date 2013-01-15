@@ -17,6 +17,8 @@ import sys
 
 # Detect if we are on Read the Docs
 read_the_docs = os.environ.get('READTHEDOCS', None) == 'True'
+if read_the_docs:
+  sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -266,7 +268,5 @@ extlinks = {
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'python': ('http://docs.python.org/release/2.6.8/', None),
-    'keybase': (os.path.abspath(os.path.join(__file__, '../../../key_base/docs/_build/html')), None),
-    'main': (os.path.abspath(os.path.join(__file__, '../../../docs/_build/html')), None),
 }
 
