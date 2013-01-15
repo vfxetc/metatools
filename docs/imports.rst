@@ -3,7 +3,7 @@
 Imports and Modules
 ===================
 
-Discovery of Dependancies
+Discovery of Dependencies
 -------------------------
 
 .. automodule:: metatools.imports.discovery

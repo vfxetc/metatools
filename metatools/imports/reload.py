@@ -46,10 +46,10 @@ but all the dependancies that it is actually capable of, e.g.:
 
     "__init__" -> "core"
 
-    "core" -> "__init__"
+    "core" -> "__init__" [constraint=false]
     "core" -> "utils"
 
-    "gui" -> "__init__"
+    "gui" -> "__init__" [constraint=false]
     "gui" -> "core"
     "gui" -> "utils"
 
