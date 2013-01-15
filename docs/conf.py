@@ -11,7 +11,12 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import datetime
+import os
+import sys
+
+# Detect if we are on Read the Docs
+read_the_docs = os.environ.get('READTHEDOCS', None) == 'True'
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -98,19 +103,16 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'flask'
-
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-html_theme_options = {
-    'index_logo': None,
-}
-
-
-# Add any paths that contain custom themes here, relative to this directory.
-sys.path.append(os.path.abspath('../../docs/_themes/flask'))
-html_theme_path = [os.path.abspath('../../docs/_themes/flask')]
+flask_path = os.path.abspath('../../docs/_themes/flask')
+if os.path.exists(flask_path):
+    sys.path.append(flask_path)
+    html_theme_path = [flask_path]
+    html_theme = 'flask'
+    html_theme_options = {
+        'index_logo': None,
+    }
+else:
+    html_theme = 'default'
 
 
 # The name for this set of Sphinx documents.  If None, it defaults to
