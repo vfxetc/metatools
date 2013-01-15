@@ -1,6 +1,7 @@
 import os
 import sys
 import optparse
+import fnmatch
 
 from .discovery import parse_toplevel_imports
 from .utils import get_name_for_path
@@ -19,25 +20,33 @@ def iter_modules(root):
 
             yield path, module, parse_toplevel_imports(open(path).read(), package, module)
 
-def main():
 
-    optparser = optparse.OptionParser()
-    opts, args = optparser.parse_args()
+def iter_dot(opts, roots):
 
     # Parse everything.
     all_modules = {}
     packages = set()
-    for path, module, imports in iter_modules(args[0]):
-        all_modules[module] = imports
-        if os.path.basename(path) == '__init__.py':
-            packages.add(module)
+    for root in roots:
+        for path, module, imports in iter_modules(root):
+            all_modules[module] = set(imports)
+            if os.path.basename(path) == '__init__.py':
+                packages.add(module)
+
+    # Filter them to exclude patterns.
+    all_modules = dict(
+        (name, imports)
+        for name, imports in all_modules.iteritems()
+        if not any(fnmatch.fnmatch(name, pattern) for pattern in opts.exclude or [])
+    )
 
     # Filter the imports to things that we have found.
     for module, imports in all_modules.iteritems():
-        imports[:] = [x for x in imports if x in all_modules]
+        imports.intersection_update(x for x in imports if x in all_modules)
+
 
     # Output the graph.
-    print 'digraph "%s" {' % args[0]
+    yield 'digraph {'
+
     levels = []
     for module, imports in all_modules.iteritems():
 
@@ -48,30 +57,42 @@ def main():
         levels[level].append(module)
 
         # Fill packages.
-        if module in packages:
-            print sys.stderr, '\t"%s" [style=filled]' % module
+        if module in packages and (imports or opts.implied):
+            yield '\t"%s" [style=filled]' % module
 
-        for import_ in imports:
+        for import_ in set(imports):
 
             m_parts = module.split('.')
             i_parts = import_.split('.')
             if m_parts[:len(i_parts)] == i_parts:
+                imports.remove(import_)
                 continue
 
-            print '\t"%s" -> "%s" [%s]' % (module, import_, 'constraint=false' if module.count('.') >= import_.count('.') else '')
+            constrain = i_parts[:len(m_parts)] == m_parts
+            yield '\t"%s" -> "%s" [%s]' % (module, import_, 'constraint=false' if not constrain else '')
 
     # Parent links.
-    for module, imports in all_modules.iteritems():
-        parent = module.rsplit('.', 1)[0]
-        if parent != module and parent not in imports and module not in all_modules.get(parent, []):
-            print '\t"%s" -> "%s" [style=dotted]' % (parent, module)
+    if opts.implied:
+        for module, imports in all_modules.iteritems():
+            parent = module.rsplit('.', 1)[0]
+            if parent != module and parent not in imports and module not in all_modules.get(parent, []):
+                yield '\t"%s" -> "%s" [style=dotted]' % (parent, module)
 
-    for level, modules in enumerate(levels):
-        if modules:
-            print '\t{rank=same; %s}' % (' '.join('"%s"' % x for x in modules))
+    # for level, modules in enumerate(levels):
+    #     if modules:
+    #         yield '\t{rank=same; %s}' % (' '.join('"%s"' % x for x in modules))
 
-    print '}'
+    yield '}'
 
+
+def main():
+
+    optparser = optparse.OptionParser()
+    optparser.add_option('-e', '--exclude', action='append')
+    optparser.add_option('-x', '--explicit', action='store_false', dest='implied')
+    opts, args = optparser.parse_args()
+
+    print '\n'.join(iter_dot(opts, args))
 
 
 if __name__ == '__main__':
