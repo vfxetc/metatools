@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(
     name='metatools',
@@ -6,7 +6,7 @@ setup(
     description='Python tools for Python tools.',
     url='http://github.com/westernx/metatools',
     
-    packages=['metatools'],
+    packages=find_packages('.'),
     
     author='Mike Boers',
     author_email='metatools@mikeboers.com',

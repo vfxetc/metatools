@@ -17,8 +17,6 @@ import sys
 
 # Detect if we are on Read the Docs
 read_the_docs = os.environ.get('READTHEDOCS', None) == 'True'
-if read_the_docs:
-  sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
