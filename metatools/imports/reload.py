@@ -27,37 +27,32 @@ would linearize the dependencies and reload everything in a big chain.
 The tricky part is since `module discovery <discovery>` does not reveal the
 actual intensions of the code, e.g.:
 
-.. graphviz::
+.. digraph:: actual_graph
 
-        digraph actual_graph {
+    {rank=same; "core" "gui" "utils"}
 
-        "__init__" -> "core"
+    "__init__" -> "core"
 
-        "core" -> "utils"
+    "core" -> "utils"
 
-        "gui" -> "core"
-        "gui" -> "utils"
-
-        {rank=same; "core" "gui" "utils"}
-    }
+    "gui" -> "core"
+    "gui" -> "utils"
 
 but all the dependancies that it is actually capable of, e.g.:
 
-.. graphviz::
+.. digraph:: discovered_graph
 
-    digraph discovered_graph {
+    {rank=same; "core" "gui" "utils"}
 
-        "__init__" -> "core"
+    "__init__" -> "core"
 
-        "core" -> "__init__"
-        "core" -> "utils"
+    "core" -> "__init__"
+    "core" -> "utils"
 
-        "gui" -> "__init__"
-        "gui" -> "core"
-        "gui" -> "utils"
+    "gui" -> "__init__"
+    "gui" -> "core"
+    "gui" -> "utils"
 
-        {rank=same; "core" "gui" "utils"}
-    }
 
 
 

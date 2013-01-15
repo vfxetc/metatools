@@ -253,6 +253,8 @@ texinfo_documents = [
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
 
+graphviz_dot_args = ['-Gdpi=72']
+
 todo_include_todos = True
 
 extlinks = {
