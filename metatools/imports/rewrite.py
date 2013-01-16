@@ -62,8 +62,13 @@ def resolve_relative(relative, module):
 
 def _iter_chunked_source(source):
     driver = lib2to3.pgen2.driver.Driver(lib2to3.pygram.python_grammar, lib2to3.pytree.convert)
-    string_io = StringIO(source)
-    encoding, _ = lib2to3.pgen2.tokenize.detect_encoding(string_io.readline)
+    
+    if hasattr(lib2to3.pgen2.tokenize, 'detect_encoding'):
+        encoding, _ = lib2to3.pgen2.tokenize.detect_encoding(string_io.readline)
+        string_io = StringIO(source)
+    else:
+        encoding = 'utf8'
+
     tree = driver.parse_string(source)
     for is_source, group in itertools.groupby(_iter_chunked_node(tree), lambda (is_source, _): is_source):
         yield is_source, ''.join((value.encode(encoding) if isinstance(value, unicode) else value) for _, value in group)
