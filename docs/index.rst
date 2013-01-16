@@ -29,3 +29,4 @@ Contents
     entrypoints
     imports
     lint
+    deprecate
