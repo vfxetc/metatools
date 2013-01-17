@@ -130,7 +130,7 @@ def main():
     # Entrypoint specific below here.
     # ===============================
 
-    ''' % globals())
+    ''' % locals())
 
             if entrypoint:
                 if len(entrypoint) == 1:
