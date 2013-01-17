@@ -64,8 +64,8 @@ def _iter_chunked_source(source):
     driver = lib2to3.pgen2.driver.Driver(lib2to3.pygram.python_grammar, lib2to3.pytree.convert)
     
     if hasattr(lib2to3.pgen2.tokenize, 'detect_encoding'):
-        encoding, _ = lib2to3.pgen2.tokenize.detect_encoding(string_io.readline)
         string_io = StringIO(source)
+        encoding, _ = lib2to3.pgen2.tokenize.detect_encoding(string_io.readline)
     else:
         encoding = 'utf8'
 
