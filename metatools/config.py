@@ -42,13 +42,19 @@ class Config(dict):
             saved = yaml.load(open(self.path).read())
             self.clear()
             self.update(saved)
+        self.dirty = False
 
-    def save(self):
+    def save(self, force=False):
+        if not force and not self.dirty:
+            return
         if self:
             encoded = yaml.dump(dict(self),
                 indent=4,
                 default_flow_style=False,
             )
+            directory = os.path.dirname(self.path)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
             with open(self.path, 'wb') as fh:
                 fh.write(encoded)
         elif os.path.exists(self.path):
@@ -59,6 +65,18 @@ class Config(dict):
         self.clear()
         if os.path.exists(self.path):
             os.unlink(self.path)
+
+    def __setitem__(self, key, value):
+        super(Config, self).__setitem__(key, value)
+        self.dirty = True
+
+    def update(self, *args, **kwargs):
+        super(Config, self).update(*args, **kwargs)
+        self.dirty = True
+
+    def __delitem__(self, key):
+        super(Config, self).__delitem__(key)
+        self.dirty = True
 
     def __enter__(self):
         return self
