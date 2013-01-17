@@ -28,5 +28,6 @@ Contents
     apps
     entrypoints
     imports
+    config
     lint
     deprecate

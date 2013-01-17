@@ -1,22 +1,28 @@
-"""
+"""Tools for easy persistance of configuration and user preferences for tools.
 
-- yml files
+Configurations are split into sections and keys; sections are conceptually for
+each tool (or other grouping of settings), and keys are for individual settings
+within that tool/section. In the current implementation, individual sections
+are saved within YAML files as a mapping.
 
-- metatools.config.get('key_base/3d/cam_cache/exporter', 'tab', 0)
-    section, name, default
+Basic usage::
+    
+    # Creating the config object; give it a unique name. Slashes will be
+    # used directly to specify sub-directories.
+    config = metatools.config.Config('your_company/' + __name__)
 
-- metatools.config.Config('key_base/maya/cam_cache/exporter') as config:
-    config.get('tab', 0)
-    config['tab'] = 0
+    # Use a value within the config; treat it like a dict.
+    dialog = setup_gui(width=config.get('width', 800))
 
-  Config.save()
-  Config.revert()
-  Config.delete()
+    # Save the values later.
+    config['width'] = dialog.width()
+    config.save() # Only if there were changes to the values.
 
-python -m metatools.config <section> <name>
-python -m metatools.config <section> <name> <value>
-python -m metatools.config --unset <section> <name>
-python -m metatools.config --unset <section>
+Quick use::
+
+    width = metatools.config.get('your_company/' + __name__, 'width') 
+    metatools.config.set('your_company/' + __name__, 'width', width)
+
 
 """
 
@@ -26,6 +32,11 @@ import yaml
 
 
 class Config(dict):
+    """Mapping which persists to disk via YAML serialization.
+
+    Use like a dictionary.
+
+    """
 
     def __init__(self, name):
         self.name = name
@@ -36,6 +47,7 @@ class Config(dict):
         self.revert()
 
     def revert(self):
+        """Revert to saved state."""
         if not os.path.exists(self.path):
             self.clear()
         else:
@@ -45,6 +57,12 @@ class Config(dict):
         self.dirty = False
 
     def save(self, force=False):
+        """Persist the current contents.
+
+        :param bool force: Always write, even if there were no changes.
+
+        """
+
         if not force and not self.dirty:
             return
         if self:
