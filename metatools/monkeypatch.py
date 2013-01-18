@@ -63,7 +63,7 @@ def patch(to_patch, name=None, must_exist=True, max_version=None):
         
         # Bail if we don't want to apply the patch.
         if max_version and sys.version[:len(max_version)] > max_version:
-            log.debug('NOT patching %s.%s with %s.%s; version > %r',
+            log.log(5, 'not patching %s.%s with %s.%s; version > %r',
                 getattr(to_patch, '__name__', to_patch),
                 attrname,
                 getattr(func, '__module__', 'unknown'),
@@ -74,7 +74,7 @@ def patch(to_patch, name=None, must_exist=True, max_version=None):
         
         # Bail if it doesn't exist.
         if must_exist and not original:
-            log.debug('NOT patching %s.%s with %s.%s; original does not exist',
+            log.log(5, 'not patching %s.%s with %s.%s; original does not exist',
                 getattr(to_patch, '__name__', to_patch),
                 attrname,
                 getattr(func, '__module__', 'unknown'),
@@ -83,7 +83,7 @@ def patch(to_patch, name=None, must_exist=True, max_version=None):
             return _patch_wrapper
             
         # Install the patch.
-        log.debug('patching %r.%s with %r', to_patch, attrname, func)
+        log.log(5, 'patching %r.%s with %r', to_patch, attrname, func)
         setattr(to_patch, attrname, _patch_wrapper)
         
         # Return the *patched* function.
