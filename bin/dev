@@ -128,15 +128,9 @@ ks_tools = os.path.abspath(os.environ['KS_TOOLS'])
 
 if not opts.no_site:
 
-    # Append on the existing sites, and make everything absolute.
-    sites = new_sites + os.environ.get('KS_PYTHON_SITES', '').split(':')
-    sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
-    environ['KS_PYTHON_SITES'] = ':'.join(sites)
-
-    # Construct the new path by copying entries in the current PATH which match
+    # Construct the new PATH by copying entries in the current PATH which match
     # KS_TOOLS, and adding coresponding entries to all of the sites.
     # TODO: Derive this better.
-
     path = []
     for dir_name in os.environ['PATH'].split(':'):
         dir_name = os.path.abspath(dir_name)
@@ -145,7 +139,7 @@ if not opts.no_site:
         # if it exists there too.
         if dir_name.startswith(ks_tools):
             relative_dir = os.path.relpath(dir_name, ks_tools)
-            for site in sites:
+            for site in new_sites:
                 site_specific_dir = os.path.join(site, relative_dir)
                 if os.path.exists(site_specific_dir):
                     path.append(site_specific_dir)
@@ -153,6 +147,12 @@ if not opts.no_site:
         path.append(dir_name)
         
     environ['PATH'] = ':'.join(path)
+
+    # Append on the existing sites, and make everything absolute.
+    if not opts.full:
+        sites = new_sites + os.environ.get('KS_PYTHON_SITES', '').split(':')
+        sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
+        environ['KS_PYTHON_SITES'] = ':'.join(sites)
 
 
 # Replace all $KS_TOOLS with our new site.
