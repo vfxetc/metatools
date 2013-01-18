@@ -28,6 +28,11 @@ optparser.add_option(
     help="print the changes to the environment",
 )
 optparser.add_option(
+    '-n', '--no-site',
+    dest='no_site', action='store_true', default=False,
+    help='do not modify the python path',
+)
+optparser.add_option(
     '-s', '--site',
     dest="sites", action="append",
     help="directory to use as the development $KS_TOOLS",
@@ -38,7 +43,7 @@ optparser.add_option(
     help="user whose dev environment to inherit; overriden by --site",
 )
 optparser.add_option(
-    '-l', '--list-sites',
+    '--list-sites',
     dest="list_sites", action="store_true", default=False,
     help="list the development environments we would have used (colon delimited)"
 )
@@ -52,11 +57,23 @@ optparser.add_option(
     dest="bootstrap", action="store_true", default=False,
     help="bootstrap a previous environment from $KS_DEV_ARGS",
 )
+optparser.add_option(
+    '-v', '--verbose',
+    dest="verbose", action="count",
+    help="request verbose behaviour from scripts; sets $KS_VERBOSE; twice for very verbose",
+)
+optparser.add_option(
+    '-l', '--log',
+    dest='log_levels', action="append",
+    help="set Python logging levels for modules; e.g.: 'sgfs:DEBUG' or ':INFO'",
+)
 optparser.disable_interspersed_args()
 opts, args = optparser.parse_args()
 
+
 if opts.bootstrap:
     opts, _ = optparser.parse_args([x for x in os.environ.get('KS_DEV_ARGS', '').split() if x])
+
 
 # Should we inherit, or start a clean environment?
 if opts.export:
@@ -64,11 +81,23 @@ if opts.export:
 else:
     environ = os.environ.copy()
 
+
 # Store the original flags as provided so that --bootstrap can pick it back up.
 # Can't just use -len(args) because -0 won't do what we want.
 bootstrap = sys.argv[1:len(sys.argv) - len(args)]
 bootstrap = os.environ.get('KS_DEV_ARGS', '').split() + bootstrap
 environ['KS_DEV_ARGS'] = ' '.join(x for x in bootstrap if x and x not in ('-e', '--export', '-b', '--bootstrap'))
+
+
+# Set the debug flag.
+if opts.verbose:
+    environ['KS_VERBOSE'] = str(opts.verbose)
+
+
+# Pass the logging levels on to sitecustomize.
+if opts.log_levels:
+    environ['KS_LOG_LEVELS'] = ','.join(x.strip() for x in opts.log_levels)
+
 
 # Determine which new sites to add.
 if opts.sites:
@@ -81,7 +110,7 @@ else:
 
 
 # Make sure that a development environment exists.
-if not new_sites:
+if not new_sites and not opts.no_site:
     print 'Could not find suitable development directory. Please make one of:'
     print '\t~/key_tools'
     print '\t~/dev'
@@ -94,37 +123,36 @@ if opts.list_sites:
     exit(0)
 
 
-# Append on the existing sites, and make everything absolute.
-sites = new_sites + os.environ.get('KS_PYTHON_SITES', '').split(':')
-sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
-
-
-
-
-environ['KS_PYTHON_SITES'] = ':'.join(sites)
-
-
-# Construct the new path by copying entries in the current PATH which match
-# KS_TOOLS, and adding coresponding entries to all of the sites.
-# TODO: Derive this better.
 ks_tools = os.path.abspath(os.environ['KS_TOOLS'])
 
-path = []
-for dir_name in os.environ['PATH'].split(':'):
-    dir_name = os.path.abspath(dir_name)
-    
-    # If this directory is within the main tools, add a site specific version
-    # if it exists there too.
-    if dir_name.startswith(ks_tools):
-        relative_dir = os.path.relpath(dir_name, ks_tools)
-        for site in sites:
-            site_specific_dir = os.path.join(site, relative_dir)
-            if os.path.exists(site_specific_dir):
-                path.append(site_specific_dir)
-    
-    path.append(dir_name)
-    
-environ['PATH'] = ':'.join(path)
+
+if not opts.no_site:
+
+    # Append on the existing sites, and make everything absolute.
+    sites = new_sites + os.environ.get('KS_PYTHON_SITES', '').split(':')
+    sites = [os.path.abspath(x.strip()) for x in sites if x.strip()]
+    environ['KS_PYTHON_SITES'] = ':'.join(sites)
+
+    # Construct the new path by copying entries in the current PATH which match
+    # KS_TOOLS, and adding coresponding entries to all of the sites.
+    # TODO: Derive this better.
+
+    path = []
+    for dir_name in os.environ['PATH'].split(':'):
+        dir_name = os.path.abspath(dir_name)
+        
+        # If this directory is within the main tools, add a site specific version
+        # if it exists there too.
+        if dir_name.startswith(ks_tools):
+            relative_dir = os.path.relpath(dir_name, ks_tools)
+            for site in sites:
+                site_specific_dir = os.path.join(site, relative_dir)
+                if os.path.exists(site_specific_dir):
+                    path.append(site_specific_dir)
+        
+        path.append(dir_name)
+        
+    environ['PATH'] = ':'.join(path)
 
 
 # Replace all $KS_TOOLS with our new site.
