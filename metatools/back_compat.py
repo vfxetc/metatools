@@ -36,12 +36,12 @@ class renamed_attr(object):
         ...         return a + b
         ...         
         ...     old_func = renamed_attr('new_func')
-        ... 
+
         >>> e = Example()
-        >>>
+
         >>> e.old_value = 'else'
         # AttributeRenamedWarning: Example.old_value renamed to new_value
-        >>>
+
         >>> e.old_func(1, 2)
         # AttributeRenamedWarning: Example.old_func renamed to new_func
         3
@@ -77,6 +77,25 @@ class renamed_attr(object):
 
 def renamed_func(func, name=None, module=None):
 
+    """Proxy for renamed functions.
+
+    :param func: The function to actually call.
+    :param str name: The name that this used to be called; for warnings.
+    :param str module: The module that this used to be in; for warnings.
+    :returns: A function which calls the original, and omits a warning.
+
+    E.g.::
+
+        >>> def new(a, b):
+        ...     return a + b
+
+        >>> old = renamed_func(new, 'old', __name__)
+
+        >>> old(1, 2)
+        # FunctionRenamedWarning: example.old renamed to example.new
+        3
+
+    """
     if name:
         if module:
             full_name = '%s.%s' % (module, name)
@@ -119,7 +138,7 @@ def module_renamed(new_name):
 
     ``old.py``::
 
-        >>> from metatools.deprecate import module_renamed
+        >>> from metatools.back_compat import module_renamed
         >>>> module_renamed('new')
 
     ``use.py``::
