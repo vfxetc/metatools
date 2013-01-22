@@ -17,7 +17,7 @@ class TestRenamedModule(TestCase):
         if sys.path[0] == self.module_sandbox:
             sys.path.pop(0)
 
-    def test(self):
+    def test_absolute(self):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
@@ -27,5 +27,16 @@ class TestRenamedModule(TestCase):
         self.assertTrue(issubclass(w[0].category, back_compat.ModuleRenamedWarning))
         self.assertEqual(w[0].message.args[0], 'test_bc_old was renamed to test_bc_new')
         self.assertEqual(test_bc_use.func(1, 2), 3)
+
+    def test_relative(self):
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            import test_bc_pack.use
+
+        self.assertEqual(len(w), 1)
+        self.assertTrue(issubclass(w[0].category, back_compat.ModuleRenamedWarning))
+        self.assertEqual(w[0].message.args[0], 'test_bc_pack.old was renamed to test_bc_pack.new')
+        self.assertEqual(test_bc_pack.use.func(1, 2), 3)
 
 
