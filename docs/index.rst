@@ -31,6 +31,8 @@ Contents
 
     lint
 
+    monkeypatch
+    
     imports
     deprecate
     back_compat
