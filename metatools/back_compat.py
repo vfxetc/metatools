@@ -9,8 +9,6 @@ from .imports import resolve_relative_name
 class ModuleRenamedWarning(UserWarning):
     pass
 
-class FunctionDeprecatedWarning(UserWarning):
-    pass
 
 
 def module_renamed(new_name):
@@ -56,26 +54,6 @@ def module_renamed(new_name):
     sys.modules[old_name] = new_module
 
 
-def decorate(func):
-    """Wrap a function so that it will issue a deprecation warning.
 
-    ::
-
-        >>> @metatools.deprecate.decorate
-        ... def old_func():
-        ...     print "Hello!"
-        ... 
-        >>> old_func()
-        # FunctionDeprecatedWarning: old_func has been deprecated
-        Hello!
-
-    """
-
-    @functools.wraps(func)
-    def _deprecated(*args, **kwargs):
-        warnings.warn('%s has been deprecated' % func.__name__, FunctionDeprecatedWarning, stacklevel=2)
-        return func(*args, **kwargs)
-
-    return _deprecated
 
 
