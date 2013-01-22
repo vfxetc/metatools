@@ -91,6 +91,24 @@ class TestRenamedAttribute(TestCase):
         self.assertTrue(issubclass(w[0].category, back_compat.AttributeRenamedWarning))
         self.assertEqual(w[0].message.args[0], 'Example.old was renamed to new')
 
+    def test_instance_method(self):
+
+        class Example(object):
+
+            def new(self, a, b):
+                return a + b
+
+            old = back_compat.renamed_attr('new')
+
+        e = Example()
+
+        with warnings.catch_warnings(record=True) as w:
+            self.assertEqual(3, e.old(1, 2))
+        self.assertEqual(len(w), 1)
+        self.assertTrue(issubclass(w[0].category, back_compat.AttributeRenamedWarning))
+        self.assertEqual(w[0].message.args[0], 'Example.old was renamed to new')
+
+
 
 
 
