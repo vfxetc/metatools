@@ -10,6 +10,10 @@ class AttributeRenamedWarning(UserWarning):
     pass
 
 
+class FunctionRenamedWarning(UserWarning):
+    pass
+
+
 class ModuleRenamedWarning(UserWarning):
     pass
 
@@ -71,6 +75,34 @@ class renamed_attr(object):
         setattr(instance, self.new_name, value)
 
 
+def renamed_func(func, name=None, module=None):
+
+    if name:
+        if module:
+            full_name = '%s.%s' % (module, name)
+        else:
+            full_name = name
+    else:
+        full_name = None
+
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+        if full_name is not None:
+            warnings.warn('%s was renamed to %s.%s' % (
+                full_name, func.__module__, func.__name__,
+            ), FunctionRenamedWarning, stacklevel=2)
+        else:
+            warnings.warn('renamed to %s.%s' % (
+                func.__module__, func.__name__,
+            ), FunctionRenamedWarning, stacklevel=2)
+        return func(*args, **kwargs)
+
+    if name:
+        _wrapper.__name__ = name
+    if module:
+        _wrapper.__module__ = module
+    
+    return _wrapper
 
 
 def module_renamed(new_name):

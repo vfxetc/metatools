@@ -109,13 +109,17 @@ class TestRenamedAttribute(TestCase):
         self.assertEqual(w[0].message.args[0], 'Example.old was renamed to new')
 
 
+class TestRenamedFunction(TestCase):
 
+    def test_renamed_func(self):
 
+        def new(a, b):
+            return a + b
+        old = back_compat.renamed_func(new, 'old', __name__)
 
-
-
-
-
-
-
+        with warnings.catch_warnings(record=True) as w:
+            self.assertEqual(3, old(1, 2))
+        self.assertEqual(1, len(w))
+        self.assertTrue(issubclass(w[0].category, back_compat.FunctionRenamedWarning))
+        self.assertEqual(w[0].message.args[0], 'test_back_compat.old was renamed to test_back_compat.new')
 
