@@ -21,12 +21,12 @@ class TestRenamedModule(TestCase):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
-            import dep_use
+            import test_bc_use
 
         self.assertEqual(len(w), 1)
         self.assertTrue(issubclass(w[0].category, back_compat.ModuleRenamedWarning))
-        self.assertEqual(w[0].message.args[0], 'dep_old was renamed to dep_new')
-        self.assertEqual(dep_use.func(1, 2), 3)
+        self.assertEqual(w[0].message.args[0], 'test_bc_old was renamed to test_bc_new')
+        self.assertEqual(test_bc_use.func(1, 2), 3)
 
 
 class TestFunctionDecorator(TestCase):
@@ -43,7 +43,7 @@ class TestFunctionDecorator(TestCase):
             self.assertEqual(namespace['res'], 3)
 
         self.assertEqual(len(w), 1)
-        self.assertTrue(issubclass(w[0].category, back_compat.Functionback_compatdWarning))
-        self.assertEqual(w[0].message.args[0], 'func has been back_compatd')
+        self.assertTrue(issubclass(w[0].category, back_compat.FunctionDeprecatedWarning))
+        self.assertEqual(w[0].message.args[0], 'func has been deprecated')
         self.assertEqual(w[0].lineno, 3)
         self.assertEqual(w[0].filename, '<string>')
