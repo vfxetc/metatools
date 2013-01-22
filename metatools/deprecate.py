@@ -171,32 +171,26 @@ def module_renamed(new_name):
     sys.modules[old_name] = new_module
 
 
-class Deprecated(object):
-
-    def __init__(self, obj):
-        self.obj = obj
-        self.name = '%s.%s' % (obj.__module__, obj.__name__)
-
-    def __call__(self, *args, **kwargs):
-        warnings.warn('Calling %s has been deprecated' % self.name, CallingDeprecatedWarning, stacklevel=2)
-        return self.obj(*args, **kwargs)
-
-
-def deprecate(obj):
+def deprecate(func):
     """Wrap a function so that it will issue a deprecation warning.
 
     ::
 
-        >>> @metatools.deprecate.deprecate
+        >>> @deprecate
         ... def old_func():
         ...     print "Hello!"
         ... 
         >>> old_func()
-        # CallingDeprecatedWarning: old_func has been deprecated
+        # CallingDeprecatedWarning: example.old_func has been deprecated
         Hello!
 
     """
 
-    wrapper = Deprecated(obj)
-    functools.update_wrapper(wrapper, obj)
-    return wrapper
+    @functools.wraps(func)
+    def _wrapped(*args, **kwargs):
+        warnings.warn('%s.%s has been deprecated' % (
+            func.__module__, func.__name__,
+        ), CallingDeprecatedWarning, stacklevel=2)
+        return func(*args, **kwargs)
+
+    return _wrapped

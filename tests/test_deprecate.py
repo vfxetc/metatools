@@ -137,6 +137,6 @@ class TestFunctionDecorator(TestCase):
 
         self.assertEqual(len(w), 1)
         self.assertTrue(issubclass(w[0].category, CallingDeprecatedWarning))
-        self.assertEqual(w[0].message.args[0], 'Calling test_deprecate.func has been deprecated')
+        self.assertEqual(w[0].message.args[0], 'test_deprecate.func has been deprecated')
         self.assertEqual(w[0].lineno, 3)
         self.assertEqual(w[0].filename, '<string>')
