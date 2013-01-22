@@ -27,7 +27,10 @@ Contents
 
     apps
     entrypoints
-    imports
     config
+
     lint
+
+    imports
     deprecate
+    back_compat
