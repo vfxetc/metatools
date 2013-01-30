@@ -31,12 +31,23 @@ class TestRenamedModule(TestCase):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always')
-            import test_dep_pack.use
+            import test_dep_rel.use
 
         self.assertEqual(len(w), 1)
         self.assertTrue(issubclass(w[0].category, ModuleRenamedWarning))
-        self.assertEqual(w[0].message.args[0], 'test_dep_pack.old was renamed to test_dep_pack.new')
-        self.assertEqual(test_dep_pack.use.func(1, 2), 3)
+        self.assertEqual(w[0].message.args[0], 'test_dep_rel.old was renamed to test_dep_rel.new')
+        self.assertEqual(test_dep_rel.use.func(1, 2), 3)
+
+    def test_package(self):
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            import test_dep_pack_use
+
+        self.assertEqual(len(w), 1)
+        self.assertTrue(issubclass(w[0].category, ModuleRenamedWarning))
+        self.assertEqual(w[0].message.args[0], 'test_dep_pack_old was renamed to test_dep_pack_new')
+        self.assertEqual(test_dep_pack_use.func(1, 2), 3)
 
 
 class TestRenamedAttribute(TestCase):
