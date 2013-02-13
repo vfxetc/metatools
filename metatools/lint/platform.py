@@ -5,7 +5,10 @@ import re
 
 direct_re = re.compile(r'''
 
-    platform\.system \s* \(\s*\)
+    (?:
+        platform\.system \s* \(\s*\) |
+        os\.uname \s* \(\s*\) \s* \[\s*0\s*\]
+    )
     \s*==\s*
     [rRuUbB]?['"]+(Darwin|Linux|Windows)['"]+
 
@@ -42,8 +45,8 @@ for arg in sys.argv[1:]:
                 m = re.search(r'^import sys', source, re.MULTILINE)
                 if not m:
 
-                    # Put it before the platform import.
-                    m = re.search(r'^import platform', source, re.MULTILINE)
+                    # Put it before the os OR platform import.
+                    m = re.search(r'^import (os|platform)', source, re.MULTILINE)
 
                     if not m:
                         print '\tNo platform import; cannot auto import sys!'
