@@ -8,6 +8,7 @@ for within :envvar:`PATH`.
 
 """
 
+import sys
 import os
 
 
@@ -52,7 +53,7 @@ def get_app_or_executable_cmd(app_name, exec_name=None):
     """
     
     # Prioritize applications on OS X
-    if os.uname()[0] == "Darwin":
+    if sys.platform.startswith("darwin"):
         tools_paths = os.environ.get('KS_PYTHON_SITES', '').split(':')
         tools_paths.append(os.environ['KS_TOOLS'])
         for tools_path in tools_paths:
