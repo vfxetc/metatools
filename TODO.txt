@@ -1,3 +1,5 @@
+- glob all app yamls into one big one
+
 
 - Properly determine order to reload dependencies:
 
@@ -31,6 +33,7 @@
         ks.nuke: 2d/nuke/python
         ks.systems: systems/python
 
+
 - merge sitecustomize into devtools.site_customize and expose it by
   just having it sit outside the main package (via a symlink?)
   then it can set its own __path__ using os.path.realpath
@@ -39,4 +42,27 @@
 - metatools.imports.compat
   - register_rename(old_name, new_name)
     adds some import hooks to deal with renames
+
+
+- Fix entrypoints to work around code directories.
+    - If the import fails, try to walk up the chain with attributes
+    - OR allow for multiple levels of attributes:
+      package.module:namespace.attribute
+
+
+- python -m entrypoints.build apps entrypoints/* applications
+- python -m entrypoints.build commands entrypoints/* applications
+
+
+- entrypoint should allow for `type: shell` which then has a different preable
+  (the same one as for the apps... you see where we are going with this?)
+
+- entrypoint should allow for local_preamble=False (for the dev tool)
+
+
+- `dev --shotgun` will set SHOTGUN="testing"
+
+
+- Setup entrypoints to work on all packages as a build step.
+  - Perhaps a command in setup.py?
 
