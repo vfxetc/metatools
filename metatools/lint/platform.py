@@ -1,3 +1,5 @@
+"""Rewrites several uses of `platform.system()` into ``sys.platform``."""
+
 import os
 import sys
 import re
@@ -23,38 +25,43 @@ def direct_replace(m):
     }[m.group(1)]
 
 
-for arg in sys.argv[1:]:
-    for dir_name, dir_names, file_names in os.walk(arg):
+def main():
 
-        # Filter dotted paths out.
-        dir_names[:] = [x for x in dir_names if not x.startswith('.')]
+    for arg in sys.argv[1:]:
+        for dir_name, dir_names, file_names in os.walk(arg):
 
-        file_names = [x for x in file_names if x.endswith('.py') and not x.startswith('.')]
-        for file_name in file_names:
+            # Filter dotted paths out.
+            dir_names[:] = [x for x in dir_names if not x.startswith('.')]
 
-            path = os.path.join(dir_name, file_name)
-            with open(path) as fh:
-                source = fh.read()
+            file_names = [x for x in file_names if x.endswith('.py') and not x.startswith('.')]
+            for file_name in file_names:
 
-            source, count = direct_re.subn(direct_replace, source)
-            if count:
+                path = os.path.join(dir_name, file_name)
+                with open(path) as fh:
+                    source = fh.read()
 
-                print path
+                source, count = direct_re.subn(direct_replace, source)
+                if count:
 
-                # Make sure it has a "import sys" at the top.
-                m = re.search(r'^import sys', source, re.MULTILINE)
-                if not m:
+                    print path
 
-                    # Put it before the os OR platform import.
-                    m = re.search(r'^import (os|platform)', source, re.MULTILINE)
-
+                    # Make sure it has a "import sys" at the top.
+                    m = re.search(r'^import sys', source, re.MULTILINE)
                     if not m:
-                        print '\tNo platform import; cannot auto import sys!'
-                        continue
 
-                    source = source[:m.start(0)] + 'import sys\n' + source[m.start(0):]
+                        # Put it before the os OR platform import.
+                        m = re.search(r'^import (os|platform)', source, re.MULTILINE)
 
-                with open(path, 'wb') as fh:
-                    fh.write(source)
+                        if not m:
+                            print '\tNo platform import; cannot auto import sys!'
+                            continue
 
+                        source = source[:m.start(0)] + 'import sys\n' + source[m.start(0):]
+
+                    with open(path, 'wb') as fh:
+                        fh.write(source)
+
+
+if __name__ == '__main__':
+    main()
 
