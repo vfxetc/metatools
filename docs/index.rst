@@ -3,6 +3,11 @@
 Meta Tools
 ==========
 
+.. image:: https://secure.travis-ci.org/westernx/metatools.png
+    :alt: Test Status
+    :target: http://travis-ci.org/westernx/metatools
+
+
 "Python about Python"
 ---------------------
 
