@@ -143,7 +143,7 @@ def module_renamed(new_name):
     ``old.py``::
 
         >>> from metatools.deprecate import module_renamed
-        >>>> module_renamed('new')
+        >>> module_renamed('new')
 
     ``use.py``::
 
