@@ -36,10 +36,7 @@ def main():
             for file_name in file_names:
 
                 path = os.path.join(dir_name, file_name)
-                try:
-                    score = score_path(path)
-                except:
-                    score = 0.0
+                score = score_path(path)
                 print '%.3f %s' % (score, path)
                 data.append((score, path))
 
