@@ -18,7 +18,7 @@ def get_toplevel_imports(module):
     if path is None:
         return []
 
-    return parse_toplevel_imports(
+    return parse_imports(
         open(path).read(),
         getattr(module, '__package__'),
         getattr(module, '__name__'),
@@ -26,13 +26,13 @@ def get_toplevel_imports(module):
     )
 
 
-def parse_toplevel_imports(source, package=None, module=None, path=None):
+def parse_imports(source, package=None, module=None, path=None, toplevel=True):
     """Get the imports at the top-level of the given Python module.
 
     :param str source: Python source code.
     :param str package: The ``__package__`` this source is from.
     :param str module: The ``__name__`` this source is from.
-
+    :param bool toplevel: Walk the full AST, or only look at the top-level?
     :returns list: The names of everything imported; absolute if package
         and module are provided.
 
@@ -45,10 +45,10 @@ def parse_toplevel_imports(source, package=None, module=None, path=None):
         # too much white in the last line.
         mod_ast = ast.parse(source.rstrip())
     except SyntaxError as e:
-        print '# autoreload SyntaxError in %s: %s' % (path, e)
+        print '# %s: SyntaxError in %s: %s' % (__name__, path, e)
         return []
 
-    for node in mod_ast.body:
+    for node in ast.walk(mod_ast) if not toplevel else mod_ast.body:
         if isinstance(node, ast.Import):
             names.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):

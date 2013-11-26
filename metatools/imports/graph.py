@@ -3,7 +3,7 @@ import sys
 import optparse
 import fnmatch
 
-from .discovery import parse_toplevel_imports
+from .discovery import parse_imports
 from .utils import get_name_for_path
 
 
@@ -18,7 +18,7 @@ def iter_modules(root):
             if module.rsplit('.', 1)[-1] == '__init__':
                 module = package
 
-            yield path, module, parse_toplevel_imports(open(path).read(), package, module)
+            yield path, module, parse_imports(open(path).read(), package, module, path, toplevel=False)
 
 
 def iter_dot(opts, roots):

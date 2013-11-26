@@ -7,7 +7,7 @@ class TestDiscovery(TestCase):
 
     def test_parse_relative(self):
 
-        names = parse_toplevel_imports(dedent('''
+        names = parse_imports(dedent('''
 
             import os
             import sys
@@ -20,6 +20,9 @@ class TestDiscovery(TestCase):
             from . import relative
             from .. import parent_relative
 
+            def func():
+                import within_func
+            
         '''))
 
         self.assertEqual(names, [
@@ -32,9 +35,9 @@ class TestDiscovery(TestCase):
             '..', '..parent_relative',
         ])
 
-    def test_parse_absolute(self):
+    def test_parse_non_toplevel(self):
 
-        names = parse_toplevel_imports(dedent('''
+        names = parse_imports(dedent('''
 
             import os
             import sys
@@ -46,6 +49,40 @@ class TestDiscovery(TestCase):
             from absolute.package import module
             from . import relative
             from .. import parent_relative
+
+            def func():
+                import within_func
+            
+        '''), toplevel=False)
+
+        self.assertEqual(names, [
+            'os', 'sys',
+            'PyQt4', 'PyQt4.QtCore', 'PyQt4.QtGui',
+            'absolute',
+            'absolute.module', 'absolute.module.function',
+            'absolute.package', 'absolute.package.module',
+            '.', '.relative',
+            '..', '..parent_relative',
+            'within_func',
+        ])
+
+    def test_parse_absolute(self):
+
+        names = parse_imports(dedent('''
+
+            import os
+            import sys
+
+            from PyQt4 import QtCore, QtGui
+
+            import absolute
+            from absolute.module import function
+            from absolute.package import module
+            from . import relative
+            from .. import parent_relative
+
+            def func():
+                import within_func
 
         '''), 'relative.package', 'relative.package.module')
 
@@ -61,7 +98,7 @@ class TestDiscovery(TestCase):
 
     def test_parse_init(self):
 
-        names = parse_toplevel_imports(dedent('''
+        names = parse_imports(dedent('''
             from .core import is_outdated, reload, autoreload
         '''), 'autoreload', 'autoreload')
 
