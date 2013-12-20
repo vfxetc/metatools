@@ -91,9 +91,9 @@ def _iter_chunked_node(node):
         yield (node.type not in (token.STRING, )), node.value
 
 
-def rewrite(source, mapping, module_name=None, non_source=False):
+def rewrite(source, mapping, module_name=None, non_source=False, **kw):
 
-    rewriter = Rewriter(mapping, module_name)
+    rewriter = Rewriter(mapping, module_name, **kw)
 
     if non_source:
         return rewriter(source)
@@ -146,10 +146,11 @@ class Rewriter(object):
         (:?.[a-zA-Z_][a-zA-Z_0-9]*)*
     ''', re.X)
 
-    def __init__(self, mapping, module_name):
+    def __init__(self, mapping, module_name, absolute=None):
 
         self.mapping = mapping
         self.module_name = module_name
+        self.absolute = absolute
         self.substitutions = {}
 
     def __call__(self, source):
@@ -196,7 +197,7 @@ class Rewriter(object):
             raise ValueError('conflicting rewrites in single import')
 
         # Restore the relative levels.
-        if was_relative:
+        if was_relative if self.absolute is None else not self.absolute:
             new_base = self.make_relative(new_base)
         else:
             new_base = '.'.join(new_base)
@@ -263,6 +264,7 @@ def main():
 
     opt_parser = optparse.OptionParser(usage="%prog [options] from:to... path...")
     opt_parser.add_option('-w', '--write', action='store_true')
+    opt_parser.add_option('-a', '--absolute', action='store_true')
     opts, args = opt_parser.parse_args()
 
     renames = []
@@ -296,7 +298,7 @@ def main():
 
         module_name = module_name_for_path(path)
         original = open(path).read().rstrip() + '\n'
-        refactored = rewrite(original, dict(renames), module_name)
+        refactored = rewrite(original, dict(renames), module_name, absolute=opts.absolute)
 
         if re.sub(r'\s+', '', refactored) != re.sub(r'\s+', '', original):
             print(diff_texts(original, refactored, path))
