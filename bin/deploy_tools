@@ -132,7 +132,7 @@ def git_distance(deployed_repo, left, right):
     try:
         out = git_output(deployed_repo, 'rev-list', '--left-right', '--count', '%s...%s' % (left, right))
     except CalledProcessError:
-        return
+        return (0, 0)
     m = re.match(r'^\s*(\d+)\s+(\d+)\s*$', out)
     if not m:
         # print colour("WARNING:", bg='yellow', bright=True, reset=True), 'Could not get rev distance from %r to %r in %r' % (left, right, deployed_repo)
@@ -260,7 +260,9 @@ for tool_name in tool_names:
         dev_origin_master = git_rev_parse(dev_repo, 'origin/master')
         
         # Are we ahead or behind?
-        
+        # TODO: this can fail if they have forked and the divergent heads are
+        #       not both in the global repo (e.g. someone has pushed commits
+        #       only to the deployed repo).
         local_left, local_right = git_distance(dev_repo, dev_head, dev_origin_master)
         remote_left, remote_right = git_distance(global_repo, dev_origin_master, deployed_head)
         ahead = local_left + remote_left
@@ -298,7 +300,7 @@ for tool_name in tool_names:
         try:
             git_call(deployed_repo, 'merge', '--ff-only', 'origin/master')
         except CalledProcessError:
-            error('Git error during fast-forward (merge).')
+            error('Git error during fast-forward (merge); --reset to force.')
             continue
     
     # Update and submodules.
