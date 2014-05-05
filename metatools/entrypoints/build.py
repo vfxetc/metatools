@@ -140,11 +140,11 @@ if __name__ == '__main__':
                         sys.path.append(local_tools)
     
                         # Add as site-package.
-                        import sitecustomize
-                        sitecustomize.add_site_dir(local_tools)
+                        import sitetools.sites
+                        sitetools.sites.add_site_dir(local_tools)
     
                         # Prepend to sites list for child processes.
-                        os.environ['KS_PYTHON_SITES'] = local_tools + ':' + os.environ['KS_PYTHON_SITES']
+                        os.environ['KS_SITES'] = local_tools + ':' + os.environ['KS_SITES']
                 
                 ''' % globals()))
                 
