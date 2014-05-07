@@ -6,6 +6,9 @@ setup(
     description='Python tools for Python tools.',
     url='http://github.com/westernx/metatools',
     
+    # Stubs of old modules.
+    py_modules=['entrypoints', 'autoreload'],
+
     packages=find_packages(exclude=['build*', 'tests*']),
     
     author='Mike Boers',
