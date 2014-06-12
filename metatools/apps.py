@@ -16,7 +16,11 @@ def main():
     # These two are dependant on the WesternX Python environment.
     local_tools = os.path.abspath(os.path.join(__file__, '..', '..', '..'))
     icons_dir = os.path.join(local_tools, 'key_base', '2d', 'icons')
-
+    
+    # dev dir doesn't exist use network build location
+    if not os.path.exists(icons_dir):
+        local_tools = os.path.abspath(os.path.join(__file__, '..', '..', '..', '..', '..'))
+        icons_dir = os.path.join(local_tools, 'key_base', '2d', 'icons')
 
     args = sys.argv[1:]
     if not args:
