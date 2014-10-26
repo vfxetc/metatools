@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import ast
 
@@ -44,8 +46,8 @@ def parse_imports(source, package=None, module=None, path=None, toplevel=True):
         # Discard all trailing whitespace to avoid syntax errors due to
         # too much white in the last line.
         mod_ast = ast.parse(source.rstrip())
-    except SyntaxError as e:
-        print '# %s: SyntaxError in %s: %s' % (__name__, path, e)
+    except (TypeError, SyntaxError) as e:
+        print('# %s: %s in %s: %s' % (__name__, e.__class__.__name__, path, e))
         return []
 
     for node in ast.walk(mod_ast) if not toplevel else mod_ast.body:
