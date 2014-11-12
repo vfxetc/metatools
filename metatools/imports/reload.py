@@ -60,14 +60,14 @@ but all the dependancies that it is actually capable of, e.g.:
 
 from __future__ import print_function
 
-try:
-    import __builtin__
-except ImportError:
-    import builtins as __builtin__
-
 import os
 import sys
 import time
+
+if sys.version_info[0] > 2:
+    from imp import reload as _reload
+else:
+    from __builtin__ import reload as _reload
 
 from . import utils
 from . import discovery
@@ -124,7 +124,7 @@ def _iter_children(module, visited=None):
 
             # Include anywhere on $KS_PYTHON_SITES that we could have
             # been imported from.
-            include_path.extend(x for x in os.environ.get('KS_PYTHON_SITES', '').split(':') if
+            include_path.extend(x for x in os.environ.get('KS_SITES', '').split(':') if
                 x and discovery.path_is_in_directories(path, [x])
             )
 
@@ -134,9 +134,9 @@ def _iter_children(module, visited=None):
                 discovery.path_is_in_directories(path, [x])
             )
 
-            # Finally, determime which of the discovered children are
+            # Finally, determine which of the discovered children are
             # on this path.
-            include_path = filter(None, include_path)
+            include_path = [x for x in include_path if x]
             for discovered_name in discovered_names:
                 discovered_module = sys.modules.get(discovered_name)
                 discovered_path = discovered_module and utils.get_source_path(discovered_module)
@@ -228,7 +228,7 @@ def reload(module, _time=None):
     if hasattr(module, '__before_reload__'):
         state = module.__before_reload__()
         
-    __builtin__.reload(module)
+    _reload(module)
     
     # Wipe the child cache.
     _child_lists.pop(module.__name__, None)

@@ -75,7 +75,7 @@ def path_is_in_directories(path, directories):
 
     """
 
-    a = filter(None, os.path.abspath(path)[1:].split('/'))
-    bs = [filter(None, os.path.abspath(x)[1:].split('/')) for x in directories]
+    a = [x for x in os.path.abspath(path)[1:].split('/') if x]
+    bs = [[y for y in os.path.abspath(x)[1:].split('/') if y] for x in directories]
     return any(a[:len(b)] == b for b in bs)
 
