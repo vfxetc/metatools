@@ -15,6 +15,15 @@ setup(
     author_email='metatools@mikeboers.com',
     license='BSD-3',
     
+    entry_points={
+        'distutils.setup_keywords': [
+            'metatools_entrypoints = metatools.entrypoints.dist:verify_setup_kwarg',
+        ],
+        'distutils.commands': [
+            'build_metatools_entrypoints = metatools.entrypoints.dist:build',
+        ],
+    },
+
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',

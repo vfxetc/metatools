@@ -1,7 +1,10 @@
+from distutils.command.build import build as distutils_build
+from distutils.core import Command
+from subprocess import call
 import datetime
 import os
 import sys
-from subprocess import call
+
 
 import yaml
 
@@ -33,15 +36,10 @@ def dedent(docstring):
     return '\n'.join(trimmed)
 
 
-if __name__ == '__main__':
-    
-    if len(sys.argv) < 3:
-        print 'usage: %s entrypoint.yml bin_dir [names]' % sys.argv[0]
-        exit(1)
-    
-    entrypoints = yaml.load(open(sys.argv[1]).read())
-    bin_dir = sys.argv[2]
-    names = sys.argv[3:] or entrypoints.keys()
+def build(entrypoint_yaml, bin_dir, names=None):
+
+    entrypoints = yaml.load(open(entrypoint_yaml).read())
+    names = names or entrypoints.keys()
     
     if not os.path.exists(bin_dir):
         print '%r does not exist; aborting' % bin_dir
@@ -177,4 +175,34 @@ if __name__ == '__main__':
         with open(os.path.join(bin_dir, name), 'w') as fh:
             fh.write(''.join(source))
         call(['chmod', '+x', os.path.join(bin_dir, name)])
+
+
+class build_command(distutils_build):
+
+    def has_entrypoints(self):
+        return False
+
+    sub_commands = distutils_build.sub_commands[:]
+    sub_commands.append(('build_entrypoints', has_entrypoints))
+
+
+class build_entrypoints(Command):
+
+    description = '"build" entrypoints (from YAML files)'
+
+
+
+if __name__ == '__main__':
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('entrypoints')
+    parser.add_argument('bin_dir')
+    parser.add_argument('names', nargs='*')
+
+    args = parser.parse_args()
+
+    build(args.entrypoints, args.bin_dir, args.names)
 
