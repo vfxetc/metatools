@@ -21,6 +21,7 @@ setup(
         ],
         'distutils.commands': [
             'build_metatools_entrypoints = metatools.entrypoints.dist:build',
+            'install_metatools_entrypoints = metatools.entrypoints.dist:install',
         ],
     },
 
