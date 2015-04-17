@@ -55,7 +55,7 @@ def get_app_or_executable_cmd(app_name, exec_name=None):
     # Prioritize applications on OS X
     if sys.platform.startswith("darwin"):
         tools_paths = os.environ.get('KS_PYTHON_SITES', '').split(':')
-        tools_paths.append(os.environ['KS_TOOLS'])
+        tools_paths.extend(os.environ.get('KS_TOOLS', None) or [])
         for tools_path in tools_paths:
             app_path = os.path.join(tools_path, 'key_base', 'applications', app_name + '.app')
             if os.path.exists(app_path):
