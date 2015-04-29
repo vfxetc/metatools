@@ -112,12 +112,6 @@ def main():
                 break
             fi
         done
-        
-        # Pull in the development environment.
-        build_tools="%(local_tools)s"
-        if [[ "$build_tools" != "$KS_TOOLS" ]]; then
-            eval $(dev --export --site "$build_tools")
-        fi
 
     fi
 
