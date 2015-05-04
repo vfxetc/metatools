@@ -17,11 +17,12 @@ setup(
     
     entry_points={
         'distutils.setup_keywords': [
-            'metatools_entrypoints = metatools.entrypoints.dist:verify_setup_kwarg',
+            'metatools_entrypoints = metatools.scripts.dist:verify_setup_kwarg', # Deprecated.
+            'metatools_scripts = metatools.scripts.dist:verify_setup_kwarg',
         ],
         'distutils.commands': [
-            'build_metatools_entrypoints = metatools.entrypoints.dist:build',
-            'install_metatools_entrypoints = metatools.entrypoints.dist:install',
+            'build_metatools_scripts = metatools.scripts.dist:build',
+            'install_metatools_scripts = metatools.scripts.dist:install',
         ],
     },
 
