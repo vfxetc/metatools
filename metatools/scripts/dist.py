@@ -9,7 +9,7 @@ from .build import build as _build
 
 class build(Command):
 
-    description = "\"build\" metatools's entrypoints scripts."
+    description = "build metatools's scripts."
 
     user_options = [
         ('build-dir=', 'd', "directory to \"build\" (copy) to"),
@@ -26,7 +26,10 @@ class build(Command):
         )
 
     def run(self):
-        path = getattr(self.distribution, 'metatools_entrypoints', None)
+        path = (
+            getattr(self.distribution, 'metatools_scripts', None) or
+            getattr(self.distribution, 'metatools_entrypoints', None)
+        )
         if path:
             if not os.path.exists(self.build_dir):
                 os.makedirs(self.build_dir)
@@ -35,7 +38,7 @@ class build(Command):
 
 class install(Command):
 
-    description = "install metatools's entrypoints scripts."
+    description = "install metatools's scripts."
 
     user_options = [
         ('install-dir=', 'd', "directory to install scripts to"),
@@ -60,7 +63,7 @@ class install(Command):
 
     def run(self):
         if not self.skip_build:
-            self.run_command('build_metatools_entrypoints')
+            self.run_command('build_metatools_scripts')
         self.outfiles = self.copy_tree(self.build_dir, self.install_dir)
 
     def get_inputs(self):
