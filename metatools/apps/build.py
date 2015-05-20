@@ -101,6 +101,7 @@ def main():
 def build_one(bundle_path, name=None, command=None, entrypoint=None, execfile=None,
     icon=None, profile=True, compile=False, identifier=None, argv_emulation=False,
     on_open_url=None, on_open_document=None, url_schemes=(), document_extensions=(),
+    path=(),
     version='1.0.0'):
 
     if not bundle_path.endswith('.app'):
@@ -208,14 +209,15 @@ def build_one(bundle_path, name=None, command=None, entrypoint=None, execfile=No
     template_path = os.path.abspath(os.path.join(__file__, '..', 'bootstrap.py'))
     target_path = os.path.join(bundle_path, 'Contents', 'MacOS', exes['primary']['name'])
     contents = open(template_path).read()
+    contents = contents.replace('METATOOLS_ARGV_EMULATION', repr(argv_emulation))
+    contents = contents.replace('METATOOLS_COMMAND', repr(command))
+    contents = contents.replace('METATOOLS_ENTRYPOINT', repr(entrypoint))
+    contents = contents.replace('METATOOLS_EXECFILE', repr(execfile))
+    contents = contents.replace('METATOOLS_ON_OPEN_DOCUMENT', repr(on_open_document))
+    contents = contents.replace('METATOOLS_ON_OPEN_URL', repr(on_open_url))
+    contents = contents.replace('METATOOLS_PATH', repr(path))
     contents = contents.replace('METATOOLS_SELF', absolute_self)
     contents = contents.replace('METATOOLS_TIME', str(build_time))
-    contents = contents.replace('METATOOLS_COMMAND', repr(command))
-    contents = contents.replace('METATOOLS_EXECFILE', repr(execfile))
-    contents = contents.replace('METATOOLS_ENTRYPOINT', repr(entrypoint))
-    contents = contents.replace('METATOOLS_ARGV_EMULATION', repr(argv_emulation))
-    contents = contents.replace('METATOOLS_ON_OPEN_URL', repr(on_open_url))
-    contents = contents.replace('METATOOLS_ON_OPEN_DOCUMENT', repr(on_open_document))
     target_path = os.path.join(bundle_path, 'Contents', 'MacOS', exes['primary']['name'])
     with open(target_path, 'w') as fh:
         fh.write(contents)
@@ -236,9 +238,14 @@ if __name__ == '__main__':
 
     parser.add_argument('--compile', action='store_true', help='use compiled bootstrapper')
     parser.add_argument('--profile', action='store_true', help='source bash profile')
-    parser.add_argument('--argv-emulation', action='store_true', help='source bash profile')
 
     parser.add_argument('-u', '--url', action='append')
+
+    parser.add_argument('--argv-emulation', action='store_true', help='source bash profile')
+    parser.add_argument('--on-open-url')
+    parser.add_argument('--on-open-document')
+
+    parser.add_argument('-p', '--path', action='append')
 
     type_group = parser.add_mutually_exclusive_group(required=True)
     type_group.add_argument('-e', '--entrypoint')
@@ -258,11 +265,15 @@ if __name__ == '__main__':
         name=args.name,
 
         argv_emulation=args.argv_emulation,
+        on_open_url=args.on_open_url,
+        on_open_document=args.on_open_document,
+
         compile=args.compile,
         profile=args.profile,
 
+        path=args.path or (),
         url_schemes=args.url or (),
-        
+
         entrypoint=args.entrypoint,
         command=args.command,
         execfile=args.execfile,

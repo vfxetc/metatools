@@ -8,25 +8,64 @@ import os
 import site
 import sys
 import time
+import threading
 
 argv_emulation = METATOOLS_ARGV_EMULATION
 command = METATOOLS_COMMAND
 entrypoint = METATOOLS_ENTRYPOINT
 execfile_ = METATOOLS_EXECFILE
-on_open_url = METATOOLS_ON_OPEN_URL
 on_open_document = METATOOLS_ON_OPEN_DOCUMENT
+on_open_url = METATOOLS_ON_OPEN_URL
+path = METATOOLS_PATH
+
+if path:
+    sys.path.extend(path)
 
 
+def load_entrypoint(spec):
+
+    if not spec:
+        return
+    parts = spec.split(':')
+
+    try:
+        module = __import__(parts[0], fromlist=['.'])
+    except ImportError as e:
+        print >> sys.stderr, spec, 'does not exist;', e
+        return
+
+    if len(parts) > 1:
+        attrs = parts[1].split('.')
+        head = module
+        for attr in attrs:
+            head = getattr(head, attr, None)
+            if head is None:
+                print >> sys.stderr, spec, 'does not exist'
+                return
+        return head
+
+
+on_open_url = load_entrypoint(on_open_url)
+on_open_document = load_entrypoint(on_open_document)
 if argv_emulation or on_open_url or on_open_document:
 
     sys.path.insert(0, os.path.dirname(sys.executable))
     import bootstrap_ae
 
     if argv_emulation:
-        print 'argv_emulation'
         handler = bootstrap_ae.AppleEventHandler()
-        handler.emulate_argv()
-        print 'done'
+        try:
+            handler.emulate_argv()
+        finally:
+            handler.close()
+
+    if on_open_url or on_open_document:
+        handler = bootstrap_ae.AppleEventHandler()
+        handler.on_open_url = on_open_url or (lambda url: None)
+        handler.on_open_document = on_open_document or (lambda doc: None)
+        thread = threading.Thread(target=handler.loop)
+        thread.daemon = True
+        thread.start()
 
 
 if command:
@@ -36,21 +75,15 @@ if command:
 
 if execfile_:
     globals_ = {'__name__': '__main__'}
+    print 'here 1'
     execfile(execfile_, globals_, globals_)
+    print 'here 2'
     exit(0)
 
 if entrypoint:
-    entrypoint = entrypoint.split(':')
-    module = __import__(entrypoint[0], fromlist=['.'])
-    if len(entrypoint) > 1:
-        attrs = entrypoint[1].split('.')
-        head = module
-        for attr in attrs:
-            head = getattr(head, attr, None)
-            if head is None:
-                print >> sys.stderr, entrypoint, 'does not exist'
-                exit(2)
-        head()
+    func = load_entrypoint(entrypoint)
+    if func:
+        func()
     exit(0)
 
 print >> sys.stderr, 'metatools.app: unknown bootstrapping type'

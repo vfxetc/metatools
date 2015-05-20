@@ -142,45 +142,41 @@ class AppleEventHandler(object):
 
     def __init__(self):
 
-        self.running = True
-        self.timeout = 60
+        self._count = 0
 
-        self._wrapped_open_app_handler  = ae_callback(self.open_app_handler)
-        self._wrapped_open_file_handler = ae_callback(self.open_file_handler)
-        self._wrapped_open_url_handler  = ae_callback(self.open_url_handler)
+        self._wrapped_on_open_app  = ae_callback(self._on_open_app)
+        self._wrapped_on_open_file = ae_callback(self._on_open_file)
+        self._wrapped_on_open_url  = ae_callback(self._on_open_url)
 
         carbon.AEInstallEventHandler(kCoreEventClass, kAEOpenApplication,
-                self._wrapped_open_app_handler, 0, FALSE)
+                self._wrapped_on_open_app, 0, FALSE)
         carbon.AEInstallEventHandler(kCoreEventClass, kAEOpenDocuments,
-                self._wrapped_open_file_handler, 0, FALSE)
+                self._wrapped_on_open_file, 0, FALSE)
         carbon.AEInstallEventHandler(kAEInternetSuite, kAEISGetURL,
-                self._wrapped_open_url_handler, 0, FALSE)
+                self._wrapped_on_open_url, 0, FALSE)
 
     def close(self):
         carbon.AERemoveEventHandler(kCoreEventClass, kAEOpenApplication,
-                self._wrapped_open_app_handler, FALSE)
+                self._wrapped_on_open_app, FALSE)
         carbon.AERemoveEventHandler(kCoreEventClass, kAEOpenDocuments,
-                self._wrapped_open_file_handler, FALSE)
+                self._wrapped_on_open_file, FALSE)
         carbon.AERemoveEventHandler(kAEInternetSuite, kAEISGetURL,
-                self._wrapped_open_url_handler, FALSE)
+                self._wrapped_on_open_url, FALSE)
 
-    def emulate_argv(self):
+    def loop(self, count=None, timeout=None):
 
-        # Remove the funny -psn_xxx_xxx argument
-        if len(sys.argv) > 1 and sys.argv[1].self.startswith('-psn_'):
-            del sys.argv[1]
-
-        self.start = time.time()
+        start = time.time()
         now = time.time()
+
         eventType = EventTypeSpec()
         eventType.eventClass = kEventClassAppleEvent
         eventType.eventKind = kEventAppleEvent
 
-        while self.running and now - self.start < self.timeout:
-            event = ctypes.c_void_p()
+        while (count is None or self._count < count) and (timeout is None or now - start < timeout):
 
+            event = ctypes.c_void_p()
             status = carbon.ReceiveNextEvent(1, ctypes.byref(eventType),
-                    self.start + self.timeout - now, TRUE, ctypes.byref(event))
+                    start + timeout - now if timeout else 60.0, TRUE, ctypes.byref(event))
 
             if status == eventLoopTimedOutErr:
                 break
@@ -194,7 +190,15 @@ class AppleEventHandler(object):
                 print("argvemulator warning: processing events failed")
                 break
 
-    def open_app_handler(self, message, reply, refcon):
+    def emulate_argv(self, timeout=60.0):
+
+        # Remove the funny -psn_xxx_xxx argument
+        if len(sys.argv) > 1 and sys.argv[1].self.startswith('-psn_'):
+            del sys.argv[1]
+
+        self.loop(count=1, timeout=timeout)
+
+    def _on_open_app(self, message, reply, refcon):
         # Got a kAEOpenApplication event, which means we can
         # self.start up. On some OSX versions this event is even
         # sent when an kAEOpenDocuments or kAEOpenURLs event
@@ -202,11 +206,13 @@ class AppleEventHandler(object):
         #
         # Therefore don't set running to false, but reduce the
         # timeout to at most two seconds beyond the current time.
-        self.timeout = min(self.timeout, time.time() - self.start + 2)
-        #self.running = False
+        # self.timeout = min(self.timeout, time.time() - self.start + 2)
+
+        # WesternX: On our OSXes, this is delivered after the URL or File is.
+        self._count += 1
         return 0
 
-    def open_file_handler(self, message, reply, refcon):
+    def _on_open_file(self, message, reply, refcon):
         listdesc = AEDesc()
         sts = carbon.AEGetParamDesc(message, keyDirectObject, typeAEList,
                 ctypes.byref(listdesc))
@@ -246,14 +252,14 @@ class AppleEventHandler(object):
                 continue
 
             if sys.version_info[0] > 2:
-                sys.argv.append(buf.value.decode('utf-8'))
+                self.on_open_file(buf.value.decode('utf-8'))
             else:
-                sys.argv.append(buf.value)
+                self.on_open_file(buf.value)
 
-        self.running = False
+        self._count += 1
         return 0
 
-    def open_url_handler(self, message, reply, refcon):
+    def _on_open_url(self, message, reply, refcon):
         listdesc = AEDesc()
         ok = carbon.AEGetParamDesc(message, keyDirectObject, typeAEList,
                 ctypes.byref(listdesc))
@@ -285,12 +291,19 @@ class AppleEventHandler(object):
 
             else:
                 if sys.version_info[0] > 2:
-                    sys.argv.append(buf.value.decode('utf-8'))
+                    self.on_open_url(buf.value.decode('utf-8'))
                 else:
-                    sys.argv.append(buf.value)
+                    self.on_open_url(buf.value)
 
-        self.running = False
+        self._count += 1
         return 0
+
+    def on_open_file(self, path):
+        sys.argv.append(path)
+
+    def on_open_url(self, url):
+        sys.argv.append(url)
+
 
 
 
