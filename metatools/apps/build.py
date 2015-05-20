@@ -199,6 +199,11 @@ def build_one(bundle_path, name=None, command=None, entrypoint=None, execfile=No
             execfile(os.path.abspath(os.path.join(sys.argv[0], '..', %r)))
         ''' % (exes['primary']['name'], ))) # Should use "next"?
 
+    if argv_emulation or on_open_url or on_open_document:
+        template_path = os.path.abspath(os.path.join(__file__, '..', 'bootstrap_ae.py'))
+        target_path = os.path.join(bundle_path, 'Contents', 'MacOS', 'bootstrap_ae.py')
+        shutil.copy(template_path, target_path)
+
     # Build the Python bootstrapper.
     template_path = os.path.abspath(os.path.join(__file__, '..', 'bootstrap.py'))
     target_path = os.path.join(bundle_path, 'Contents', 'MacOS', exes['primary']['name'])
@@ -231,6 +236,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--compile', action='store_true', help='use compiled bootstrapper')
     parser.add_argument('--profile', action='store_true', help='source bash profile')
+    parser.add_argument('--argv-emulation', action='store_true', help='source bash profile')
+
+    parser.add_argument('-u', '--url', action='append')
 
     type_group = parser.add_mutually_exclusive_group(required=True)
     type_group.add_argument('-e', '--entrypoint')
@@ -249,9 +257,12 @@ if __name__ == '__main__':
         bundle_path=args.bundle_path,
         name=args.name,
 
+        argv_emulation=args.argv_emulation,
         compile=args.compile,
         profile=args.profile,
 
+        url_schemes=args.url or (),
+        
         entrypoint=args.entrypoint,
         command=args.command,
         execfile=args.execfile,
