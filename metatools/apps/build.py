@@ -254,8 +254,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-f', '--force', action='store_true')
 
-    parser.add_argument('--compile', action='store_true')
-    parser.add_argument('--profile', action='store_true')
+    parser.add_argument('--compile', action='store_true', help='use compiled bootstrapper')
+    parser.add_argument('--profile', action='store_true', help='source bash profile')
 
     type_group = parser.add_mutually_exclusive_group(required=True)
     type_group.add_argument('-e', '--entrypoint')

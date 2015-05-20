@@ -27,6 +27,10 @@ setup(
             'build_metatools_apps = metatools.apps.dist:build',
             # 'install_metatools_apps = metatools.apps.dist:install',
         ],
+        'console_scripts': '''
+            metatools_scripts = metatools.scripts.build:main
+            metatools_apps    = metatools.apps.build:main
+        ''',
     },
 
     classifiers=[

@@ -20,9 +20,10 @@ imports cause some strange problems), however we have found that the problems
 it brings up are minor in comparison to the speed boost it tends to give us
 while in active development.
 
-A better algorithm would construct a full module graph (it would not be
-acyclic), and iteratively expand the region that must be reloaded. Then it
-would linearize the dependencies and reload everything in a big chain.
+A better algorithm would construct a full module graph (doing something about
+cycles), and iteratively expand the region that must be reloaded. It may cull
+those who have not changes, linearize the remaining dependencies and reload
+everything in a big chain.
 
 The tricky part is since `module discovery <discovery>` does not reveal the
 actual intensions of the code, e.g.:

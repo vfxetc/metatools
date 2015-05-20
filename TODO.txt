@@ -1,25 +1,6 @@
-- glob all app yamls into one big one
-
-
-- Properly determine order to reload dependencies:
-
-  1. Construct a complete dependency graph. Essentially a dictionary
-     of modules to their ordered imports.
-
-  2. Check the mtime on every one of those files.
-
-  3. Reduce the dependency graph to only those modules that have been
-     changed, or depend on something that has. Have a reverse-mapping
-     (from modules to those which depend on them) so you can establish
-     a single set of everything that was modified or is affected.
-
-  4. Linearize the remaining graph with something like C3. See my
-     implementation: https://github.com/mikeboers/C3Linearize . We
-     will not be able to fully linearize it due to import cycles, so
-     we need to have some deterministic something for that occourance.
-     
-  5. Walk through that list in reverse order reloading everything.
-
+- how to represent apps in setup.py?
+    option 1: a single yaml file containing a list of dicts
+    option 2: a list of dicts
 
 - pseudopackages
 
@@ -33,36 +14,7 @@
         ks.nuke: 2d/nuke/python
         ks.systems: systems/python
 
-
-- merge sitecustomize into devtools.site_customize and expose it by
-  just having it sit outside the main package (via a symlink?)
-  then it can set its own __path__ using os.path.realpath
-
-
 - metatools.imports.compat
   - register_rename(old_name, new_name)
     adds some import hooks to deal with renames
-
-
-- Fix entrypoints to work around code directories.
-    - If the import fails, try to walk up the chain with attributes
-    - OR allow for multiple levels of attributes:
-      package.module:namespace.attribute
-
-
-- python -m entrypoints.build apps entrypoints/* applications
-- python -m entrypoints.build commands entrypoints/* applications
-
-
-- entrypoint should allow for `type: shell` which then has a different preable
-  (the same one as for the apps... you see where we are going with this?)
-
-- entrypoint should allow for local_preamble=False (for the dev tool)
-
-
-- `dev --shotgun` will set SHOTGUN="testing"
-
-
-- Setup entrypoints to work on all packages as a build step.
-  - Perhaps a command in setup.py?
 
