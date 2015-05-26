@@ -53,7 +53,7 @@ def compile_bootstrap(target, source):
     if not get_var('PYTHONFRAMEWORK'):
         ld_flags.extend(get_var('LINKFORSHARED').split())
 
-    c_source_path = os.path.abspath(os.path.join(__file__, '..', 'bootstrap.c'))
+    c_source_path = get_template_path('bootstrap.c')
     build_dir = tempfile.mkdtemp(prefix='metatools_app.%s.' % os.path.basename(target))
     objs = cc.compile([c_source_path], build_dir, extra_preargs=c_flags,
         macros=[('METATOOLS_BOOTSTRAP_SOURCE', '"%s"' % source.encode('string-escape'))],
@@ -125,7 +125,7 @@ def build_one(command, bundle_path, command_type=None,
     identifier=None,
 
     source_profile=True,
-    compile_bootstrap=False,
+    use_compiled_bootstrap=False,
 
     url_schemes=(),
     document_extensions=(),
@@ -226,12 +226,13 @@ def build_one(command, bundle_path, command_type=None,
         check_call(['chmod', 'a+x', target_path])
 
     # Build the compile bootstrapper.
-    if compile_bootstrap:
+    if use_compiled_bootstrap:
         target_path = os.path.join(bundle_path, 'Contents', 'MacOS', exes['compile']['name'])
         compile_bootstrap(target_path, dedent('''
             import os
             import sys
-            execfile(os.path.abspath(os.path.join(sys.argv[0], '..', %r)))
+            __file__ = os.path.abspath(os.path.join(sys.argv[0], '..', %r))
+            execfile(__file__)
         ''' % (exes['primary']['name'], ))) # Should use "next"?
 
     if argv_emulation or on_open_url or on_open_document:
@@ -255,7 +256,7 @@ def build_one(command, bundle_path, command_type=None,
     target_path = os.path.join(bundle_path, 'Contents', 'MacOS', exes['primary']['name'])
     with open(target_path, 'w') as fh:
         fh.write(contents)
-    if not compile_bootstrap:
+    if not use_compiled_bootstrap:
         check_call(['chmod', 'a+x', target_path])
 
 
@@ -272,8 +273,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-n', '--name')
 
-    parser.add_argument('--compile', action='store_true', help='use compiled bootstrapper')
-    parser.add_argument('--profile', action='store_true', help='source bash profile')
+    parser.add_argument('--compile-bootstrap', action='store_true', help='use compiled bootstrapper')
+    parser.add_argument('--source-profile', action='store_true', help='source bash profile')
 
     parser.add_argument('-u', '--url-scheme', action='append')
 
@@ -307,8 +308,8 @@ if __name__ == '__main__':
         on_open_url=args.on_open_url,
         on_open_document=args.on_open_document,
 
-        compile_bootstrap=args.compile,
-        source_profile=args.profile,
+        use_compiled_bootstrap=args.compile_bootstrap,
+        source_profile=args.source_profile,
 
         python_path=args.python_path or (),
         envvars=args.envvar or (),
