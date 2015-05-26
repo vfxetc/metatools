@@ -13,10 +13,11 @@ if [[ "$#" == 1 && "${1:0:4}" == "-psn" ]]; then
     shift
 fi
 
+source_profile="METATOOLS_SOURCE_PROFILE"
 
 # Build the environment if it doesn't already exist. We try to recreate the
 # bash environment as if invocated with "--login".
-if [[ "$SHLVL" < 2 ]]; then
+if [[ "$source_profile" == "1" && "$SHLVL" < 2 ]]; then
     
     # Global profile.
     if [[ -f /etc/profile ]]; then
@@ -37,15 +38,15 @@ fi
 METATOOLS_ENVVARS
 
 
-command="METATOOLS_COMMAND"
-command_type="METATOOLS_COMMAND_TYPE"
+target="METATOOLS_TARGET"
+target_type="METATOOLS_TARGET_TYPE"
 
-case "$command_type" in
+case "$target_type" in
     exec)
-        exec "$command" "$@"
+        exec "$target" "$@"
         ;;
     shell)
-        eval "$command"
+        eval "$target"
         exit $?
         ;;  
 esac

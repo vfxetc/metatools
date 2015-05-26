@@ -1,1 +1,1 @@
-from .build import main
+from .build import build_app

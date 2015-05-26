@@ -12,8 +12,8 @@ import threading
 
 
 argv_emulation = METATOOLS_ARGV_EMULATION
-command = METATOOLS_COMMAND
-command_type = METATOOLS_COMMAND_TYPE
+target = METATOOLS_TARGET
+target_type = METATOOLS_TARGET_TYPE
 envvars = METATOOLS_ENVVARS
 on_open_document = METATOOLS_ON_OPEN_DOCUMENT
 on_open_url = METATOOLS_ON_OPEN_URL
@@ -74,18 +74,18 @@ if argv_emulation or on_open_url or on_open_document:
         thread.start()
 
 
-if command_type == 'execfile':
+if target_type == 'execfile':
     globals_ = {'__name__': '__main__'}
-    execfile(command, globals_, globals_)
+    execfile(target, globals_, globals_)
     exit(0)
 
-if command_type == 'entrypoint':
-    func = load_entrypoint(command)
+if target_type == 'entrypoint':
+    func = load_entrypoint(target)
     if func:
         func()
     exit(0)
 
-print >> sys.stderr, 'metatools.app: unknown command type', command_type
+print >> sys.stderr, 'metatools.app: unknown target type', target_type
 exit(3)
 
 

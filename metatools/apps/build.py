@@ -64,61 +64,13 @@ def compile_bootstrap(target, source):
     shutil.rmtree(build_dir)
 
 
-def main():
-
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('-f', '--force', action='store_true')
-    arg_parser.add_argument('--icons', action='append')
-    arg_parser.add_argument('app_yaml')
-    arg_parser.add_argument('build_dir')
-
-    build_time = datetime.datetime.now()
-    absolute_self = os.path.abspath(__file__)
-
-    # These two are dependant on the WesternX Python environment.
-    local_tools = os.path.abspath(os.path.join(__file__, '..', '..', '..'))
-    icons_dir = os.path.join(local_tools, 'key_base', '2d', 'icons')
-    
-    # dev dir doesn't exist use network build location
-    if not os.path.exists(icons_dir):
-        local_tools = os.path.abspath(os.path.join(__file__, '..', '..', '..', '..', '..'))
-        icons_dir = os.path.join(local_tools, 'key_base', '2d', 'icons')
-
-    args = sys.argv[1:]
 
 
-    for cfg_file in args:    
-        config = yaml.load(open(cfg_file).read()) or {}
+def build_app(
 
-
-        # Get a name, or use the name of the config file.
-        name = config.get('name') or os.path.basename(cfg_file)[:-4]
-        safe_name = re.sub(r'\W+', '_', name)
-        print '\t' + name + '.app'
-        
-        # Get the icon, or look for one that matches the name.
-        icon = config.get('icon') or name + '.icns'
-        icon = os.path.join(icons_dir, icon)
-        icon = icon if os.path.exists(icon) else None
-        
-        # Get the command, defaulting to the name.
-        command = config.get('command')
-        entrypoint = config.get('entrypoint')
-        if entrypoint:
-            entrypoint = entrypoint.split(':')
-            if len(entrypoint) > 2:
-                print 'ERROR: entrypoint must be "package.module" or "package.module:function"'
-                continue
-        else:
-            command = safe_name
-
-                # Clean up the old one.
-        if os.path.exists(bundle_path):
-            for name in os.listdir(bundle_path):
-                call(['rm', '-rf', os.path.join(bundle_path, name)])
-
-
-def build_one(command, bundle_path, command_type=None,
+    target_type,
+    target,
+    bundle_path,
 
     name=None,
     icon=None,
@@ -143,18 +95,19 @@ def build_one(command, bundle_path, command_type=None,
     if not bundle_path.endswith('.app'):
         raise ValueError('bundle_path must end in .app')
 
-    command_type = command_type or 'entrypoint'
-    if command_type not in ('entrypoint', ):
-        raise ValueError('unknown command_type %r' % command_type)
+    target_type = target_type or 'entrypoint'
+    if target_type not in ('entrypoint', 'exec'):
+        raise ValueError('unknown target_type %r' % target_type)
 
-    if command_type == 'entrypoint':
-        parts = command.split(':')
+    if target_type == 'entrypoint':
+        parts = target.split(':')
         if len(parts) > 2:
             raise ValueError('entrypoint must be "package.module" or "package.module:function"')
 
-    elif command_type == 'exec' and compile_bootstrap:
-        raise ValueError('cannot compile bootstrap for external command')
+    elif target_type == 'exec' and use_compiled_bootstrap:
+        raise ValueError('cannot compile bootstrap for external target')
 
+    is_exec = target_type == 'exec'
 
     name = name or os.path.splitext(os.path.basename(bundle_path))[0]
     safe_name = re.sub(r'\W+', '_', name)
@@ -166,9 +119,9 @@ def build_one(command, bundle_path, command_type=None,
     os.makedirs(os.path.join(bundle_path, 'Contents', 'MacOS'))
     
     exes = filter(None, [
-        ('profile', {'name': 'bootstrap_%s.sh' % safe_name}) if source_profile else None,
-        ('compile', {'name': 'bootstrap_%s'    % safe_name}) if compile_bootstrap else None,
-        ('primary', {'name': 'bootstrap_%s.py' % safe_name}),
+        ('profile', {'name': 'bootstrap_%s.sh' % safe_name}) if source_profile or is_exec else None,
+        ('compile', {'name': 'bootstrap_%s'    % safe_name}) if use_compiled_bootstrap else None,
+        ('primary', {'name': 'bootstrap_%s.py' % safe_name}) if not is_exec else None,
     ])
     exes[0][1]['name'] = safe_name
     for i, (type_, config) in enumerate(exes):
@@ -206,13 +159,14 @@ def build_one(command, bundle_path, command_type=None,
 
     
     # Build the profile bootstrapper.
-    if source_profile:
+    if source_profile or is_exec:
         contents = render_template('bootstrap.sh',
-            COMMAND=command,
-            COMMAND_TYPE=command_type,
+            TARGET=target,
+            TARGET_TYPE=target_type,
             ENVVARS='\n'.join('export %s="%s"' % x for x in envvars),
-            NEXT=exes[exes['profile']['next']]['name'],
+            NEXT=exes.get(exes['profile']['next'], {}).get('name') or '',
             SELF=absolute_self,
+            SOURCE_PROFILE=str(int(bool(source_profile))),
             TIME=str(build_time),
         )
         target_path = os.path.join(bundle_path, 'Contents', 'MacOS', exes['profile']['name'])
@@ -236,23 +190,24 @@ def build_one(command, bundle_path, command_type=None,
             os.path.join(bundle_path, 'Contents', 'MacOS', 'bootstrap_apple_events.py')
         )
 
-    # Build the Python bootstrapper.
-    contents = render_template('bootstrap.py',
-        ARGV_EMULATION=repr(argv_emulation),
-        COMMAND=repr(command),
-        COMMAND_TYPE=repr(command_type),
-        ENVVARS='()' if source_profile else repr(envvars), # This will have already been handled.
-        ON_OPEN_DOCUMENT=repr(on_open_document),
-        ON_OPEN_URL=repr(on_open_url),
-        PATH=repr(python_path),
-        SELF=absolute_self,
-        TIME=str(build_time),
-    )
-    target_path = os.path.join(bundle_path, 'Contents', 'MacOS', exes['primary']['name'])
-    with open(target_path, 'w') as fh:
-        fh.write(contents)
-    if not use_compiled_bootstrap:
-        check_call(['chmod', 'a+x', target_path])
+    if not is_exec:
+        # Build the Python bootstrapper.
+        contents = render_template('bootstrap.py',
+            ARGV_EMULATION=repr(argv_emulation),
+            TARGET=repr(target),
+            TARGET_TYPE=repr(target_type),
+            ENVVARS='()' if source_profile else repr(envvars), # This will have already been handled.
+            ON_OPEN_DOCUMENT=repr(on_open_document),
+            ON_OPEN_URL=repr(on_open_url),
+            PATH=repr(python_path),
+            SELF=absolute_self,
+            TIME=str(build_time),
+        )
+        target_path = os.path.join(bundle_path, 'Contents', 'MacOS', exes['primary']['name'])
+        with open(target_path, 'w') as fh:
+            fh.write(contents)
+        if not use_compiled_bootstrap:
+            check_call(['chmod', 'a+x', target_path])
 
 
 
@@ -283,7 +238,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-t', '--type', choices=['entrypoint', 'python', 'shell', 'exec', 'execfile'], default='entrypoint')
 
-    parser.add_argument('command')
+    parser.add_argument('target')
     parser.add_argument('bundle_path')
 
     args = parser.parse_args()
@@ -291,10 +246,10 @@ if __name__ == '__main__':
     if args.force and os.path.exists(args.bundle_path):
         shutil.rmtree(args.bundle_path)
 
-    build_one(
+    build(
 
-        command=args.command,
-        command_type=args.type,
+        target=args.target,
+        target_type=args.type,
 
         bundle_path=args.bundle_path,
 
