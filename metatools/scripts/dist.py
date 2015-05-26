@@ -77,10 +77,10 @@ class install(Command):
 
 
 _build_commands = [
-    ('build_metatools_entrypoints', lambda self: True),
+    ('build_metatools_scripts', lambda self: True),
 ]
 _install_commands = [
-    ('install_metatools_entrypoints', lambda self: True),
+    ('install_metatools_scripts', lambda self: True),
 ]
 
 def _bootstrap_distutils():
