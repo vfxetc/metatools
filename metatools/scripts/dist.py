@@ -4,7 +4,7 @@ import os
 
 from setuptools.command.install import install as orig_install
 
-from .build import build as _build
+from .build import build_scripts
 
 
 class build(Command):
@@ -33,7 +33,7 @@ class build(Command):
         if path:
             if not os.path.exists(self.build_dir):
                 os.makedirs(self.build_dir)
-            _build(path, self.build_dir)
+            build_scripts(path, self.build_dir)
 
 
 class install(Command):

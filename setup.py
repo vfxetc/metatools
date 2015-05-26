@@ -30,8 +30,8 @@ setup(
             # 'install_metatools_apps = metatools.apps.dist:install',
         ],
         'console_scripts': '''
-            metatools_scripts = metatools.scripts.build:main
-            metatools_apps    = metatools.apps.build:main
+            metatools-build-scripts = metatools.scripts.build:main_plural
+            metatools-build-app     = metatools.apps.build:main
         ''',
     },
 
