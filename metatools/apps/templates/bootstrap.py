@@ -10,16 +10,21 @@ import sys
 import time
 import threading
 
+
 argv_emulation = METATOOLS_ARGV_EMULATION
 command = METATOOLS_COMMAND
-entrypoint = METATOOLS_ENTRYPOINT
-execfile_ = METATOOLS_EXECFILE
+command_type = METATOOLS_COMMAND_TYPE
+envvars = METATOOLS_ENVVARS
 on_open_document = METATOOLS_ON_OPEN_DOCUMENT
 on_open_url = METATOOLS_ON_OPEN_URL
-path = METATOOLS_PATH
+python_path = METATOOLS_PATH
 
-if path:
-    sys.path.extend(path)
+
+if python_path:
+    sys.path.extend(python_path)
+
+for k, v in envvars:
+    os.environ[k] = v
 
 
 def load_entrypoint(spec):
@@ -45,22 +50,23 @@ def load_entrypoint(spec):
         return head
 
 
+# These two do NOT work, but I'm still working on it.
 on_open_url = load_entrypoint(on_open_url)
 on_open_document = load_entrypoint(on_open_document)
 if argv_emulation or on_open_url or on_open_document:
 
-    sys.path.insert(0, os.path.dirname(sys.executable))
-    import bootstrap_ae
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from bootstrap_apple_events import AppleEventHandler
 
     if argv_emulation:
-        handler = bootstrap_ae.AppleEventHandler()
+        handler = AppleEventHandler()
         try:
             handler.emulate_argv()
         finally:
             handler.close()
 
     if on_open_url or on_open_document:
-        handler = bootstrap_ae.AppleEventHandler()
+        handler = AppleEventHandler()
         handler.on_open_url = on_open_url or (lambda url: None)
         handler.on_open_document = on_open_document or (lambda doc: None)
         thread = threading.Thread(target=handler.loop)
@@ -68,25 +74,18 @@ if argv_emulation or on_open_url or on_open_document:
         thread.start()
 
 
-if command:
-    # We loaded python just to do this?
-    os.execvp(command, [command] + sys.argv[1:])
-    exit(1) # Never reached.
-
-if execfile_:
+if command_type == 'execfile':
     globals_ = {'__name__': '__main__'}
-    print 'here 1'
-    execfile(execfile_, globals_, globals_)
-    print 'here 2'
+    execfile(command, globals_, globals_)
     exit(0)
 
-if entrypoint:
-    func = load_entrypoint(entrypoint)
+if command_type == 'entrypoint':
+    func = load_entrypoint(command)
     if func:
         func()
     exit(0)
 
-print >> sys.stderr, 'metatools.app: unknown bootstrapping type'
+print >> sys.stderr, 'metatools.app: unknown command type', command_type
 exit(3)
 
 

@@ -4,6 +4,7 @@
 # METATOOLS_SELF
 # at METATOOLS_TIME.
 
+
 # Remove OS X's automatic Process Serial Number. There is apparently no way for
 # us to detect if this will be passed beyond simply looking for it, so make sure
 # that you don't `open` one of these apps and pass it a single argument that
@@ -11,6 +12,7 @@
 if [[ "$#" == 1 && "${1:0:4}" == "-psn" ]]; then
     shift
 fi
+
 
 # Build the environment if it doesn't already exist. We try to recreate the
 # bash environment as if invocated with "--login".
@@ -31,5 +33,23 @@ if [[ "$SHLVL" < 2 ]]; then
 
 fi
 
-# Move onto the next step.
+
+METATOOLS_ENVVARS
+
+
+command="METATOOLS_COMMAND"
+command_type="METATOOLS_COMMAND_TYPE"
+
+case "$command_type" in
+    exec)
+        exec "$command" "$@"
+        ;;
+    shell)
+        eval "$command"
+        exit $?
+        ;;  
+esac
+
+
+# Move on to the next step.
 exec "$(dirname "$0")/METATOOLS_NEXT" "$@"

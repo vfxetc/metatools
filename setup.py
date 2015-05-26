@@ -5,15 +5,17 @@ setup(
     version='0.2.0a0',
     description='Python tools for Python tools.',
     url='http://github.com/westernx/metatools',
+        
+    author='Mike Boers',
+    author_email='metatools@mikeboers.com',
+    license='BSD-3',
     
     # Stubs of old modules.
     py_modules=['entrypoints', 'autoreload'],
 
     packages=find_packages(exclude=['build*', 'tests*']),
-    
-    author='Mike Boers',
-    author_email='metatools@mikeboers.com',
-    license='BSD-3',
+
+    include_package_data=True,
     
     entry_points={
         'distutils.setup_keywords': [
