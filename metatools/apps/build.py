@@ -9,6 +9,7 @@ import re
 import shutil
 import sys
 import tempfile
+import plistlib
 
 import yaml
 
@@ -128,6 +129,7 @@ def build_one(command, bundle_path, command_type=None,
     use_compiled_bootstrap=False,
 
     url_schemes=(),
+    file_types=(),
     document_extensions=(),
     argv_emulation=False,
     on_open_url=None,
@@ -188,27 +190,20 @@ def build_one(command, bundle_path, command_type=None,
         os.makedirs(os.path.join(bundle_path, 'Contents', 'Resources'))
         shutil.copy(icon, os.path.join(bundle_path, 'Contents', 'Resources'))
 
-    with open(os.path.join(bundle_path, 'Contents', 'Info.plist'), 'w') as fh:
-        fh.write(dedent('''<?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-        '''))
-        for k, v in plist.items():
-            fh.write('\t<key>%s</key>\n' % k)
-            fh.write('\t<string>%s</string>\n' % v)
-        if url_schemes:
-            fh.write('\t<key>CFBundleURLTypes</key>\n\t<array>\n')
-            for url_scheme in url_schemes:
-                fh.write('\t\t<dict>\n')
-                fh.write('\t\t\t<key>CFBundleURLName</key>\n')
-                fh.write('\t\t\t<string>com.westernx.url.%s</string>\n' % url_scheme)
-                fh.write('\t\t\t<key>CFBundleURLSchemes</key>\n')
-                fh.write('\t\t\t<array><string>%s</string></array>\n' % url_scheme)
-                fh.write('\t\t</dict>\n')
-            fh.write('\t</array>\n')
+    if url_schemes:
+        plist['CFBundleURLTypes'] = [{
+            'CFBundleURLName': '%s.%s' % (identifier, url_scheme),
+            'CFBundleURLSchemes': [url_scheme],
+        } for url_scheme in url_schemes]
 
-        fh.write('</dict>\n</plist>\n')
+    if file_types:
+        plist['CFBundleDocumentTypes'] = [{
+            'CFBundleURLName': '%s.%s' % (identifier, url_scheme),
+            'CFBundleTypeExtensions': file_type['extensions'],
+        } for file_type in file_types]
+
+    plistlib.writePlist(plist, os.path.join(bundle_path, 'Contents', 'Info.plist'))
+
     
     # Build the profile bootstrapper.
     if source_profile:
@@ -277,6 +272,7 @@ if __name__ == '__main__':
     parser.add_argument('--source-profile', action='store_true', help='source bash profile')
 
     parser.add_argument('-u', '--url-scheme', action='append')
+    parser.add_argument('--file-types', action='append')
 
     parser.add_argument('--argv-emulation', action='store_true', help='source bash profile')
     parser.add_argument('--on-open-url', help='BROKEN')
@@ -315,5 +311,8 @@ if __name__ == '__main__':
         envvars=args.envvar or (),
 
         url_schemes=args.url_scheme or (),
+        file_types=[{
+            'extensions': args.file_types
+        }] if args.file_types else (),
 
     )
