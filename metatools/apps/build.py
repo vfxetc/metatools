@@ -133,10 +133,21 @@ def build_app(
 
     # Build the plist
     plist = {}
-    plist['CFBundleDisplayName'] = safe_name
+    plist['CFBundleDisplayName'] = name
     plist['CFBundleIdentifier'] = identifier
     plist['CFBundleVersion'] = version
     plist['CFBundleExecutable'] = safe_name,
+
+    # plist['CFBundleIconFile'] = ''
+    plist['CFBundleGetInfoString'] = 'Created by metatools'
+    plist['CFBundlePackageType'] = 'APPL'
+    plist['CFBundleSignature'] = '????'
+    plist['NSPrincipalClass'] = 'NSApplication'
+
+    # This one MUST be set, even though Apple says it is required. If it is
+    # not set, and we use the compiled bootstrapper to that it takes effect, 
+    # AND we use Qt, Qt will crash when trying to render the menu bar.
+    plist['CFBundleName'] = name
 
     if icon:
         plist['CFBundleIconFile'] = os.path.basename(icon)
@@ -246,7 +257,7 @@ if __name__ == '__main__':
     if args.force and os.path.exists(args.bundle_path):
         shutil.rmtree(args.bundle_path)
 
-    build(
+    build_app(
 
         target=args.target,
         target_type=args.type,
