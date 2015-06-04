@@ -1,6 +1,6 @@
 from distutils import sysconfig
 from distutils.ccompiler import new_compiler
-from subprocess import call, check_call
+from subprocess import call, check_call, check_output
 import argparse
 import datetime
 import glob
@@ -89,6 +89,8 @@ def build_app(
 
     python_path=(),
     envvars=(),
+
+    register=True,
 
 ):
 
@@ -219,6 +221,26 @@ def build_app(
             fh.write(contents)
         if not use_compiled_bootstrap:
             check_call(['chmod', 'a+x', target_path])
+
+    if register:
+
+        lsregister = '/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister'
+        dump = check_output([lsregister, '-apps', '-dump'])
+        registered = False
+
+        for chunk in re.split(r'-{10,}', dump):
+            if not re.search(r'identifier:\s+%s' % identifier, chunk):
+                continue
+            m = re.search(r'path:\s+([^\n])+', chunk)
+            old_path = m.group(1)
+            
+            if old_path == bundle_path:
+                registered = True
+            else:
+                check_call([lsregister, '-vu', old_path])
+
+        if not registered:
+            call([lsregister, '-v', bundle_path])
 
 
 
