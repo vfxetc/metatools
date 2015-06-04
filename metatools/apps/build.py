@@ -138,7 +138,7 @@ def build_app(
     plist['CFBundleDisplayName'] = name
     plist['CFBundleIdentifier'] = identifier
     plist['CFBundleVersion'] = version
-    plist['CFBundleExecutable'] = safe_name,
+    plist['CFBundleExecutable'] = safe_name
 
     # plist['CFBundleIconFile'] = ''
     plist['CFBundleGetInfoString'] = 'Created by metatools'
@@ -146,7 +146,7 @@ def build_app(
     plist['CFBundleSignature'] = '????'
     plist['NSPrincipalClass'] = 'NSApplication'
 
-    # This one MUST be set, even though Apple says it is required. If it is
+    # This one MUST be set, even though Apple says it is not required. If it is
     # not set, and we use the compiled bootstrapper to that it takes effect, 
     # AND we use Qt, Qt will crash when trying to render the menu bar.
     plist['CFBundleName'] = name
