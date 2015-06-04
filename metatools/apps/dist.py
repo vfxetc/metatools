@@ -1,7 +1,8 @@
-from distutils.command.build import build as orig_build
 from distutils.cmd import Command
+from distutils.command.build import build as orig_build
 import os
 import shutil
+import sys
 
 from setuptools.command.install import install as orig_install
 
@@ -25,6 +26,9 @@ class build(Command):
             self.build_dir = os.path.join(self.build_dir, 'apps')
 
     def run(self):
+
+        if not sys.platform == 'darwin':
+            return
 
         kwargs_list = getattr(self.distribution, 'metatools_apps', None)
         if not kwargs_list:
