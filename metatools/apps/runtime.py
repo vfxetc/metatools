@@ -1,5 +1,6 @@
 import functools
 import site
+import struct
 
 from ..moduleproxy import ModuleProxy
 
@@ -44,8 +45,20 @@ class Delegate(NS.Object):
         obj = cls._instance
         if not obj:
             obj = cls._instance = cls.alloc().init()
-            obj._next = None
+            obj._init()
         return obj
+
+    def _init(self):
+        self._next = NS.App.delegate()
+        NS.App.setDelegate_(self)
+        print 'setting up apple events'
+        apple_event_manager = NS.AppleEventManager.sharedAppleEventManager()
+        apple_event_manager.setEventHandler_andSelector_forEventClass_andEventID_(
+            self,
+            self.handleGetURLEvent_withReplyEvent_,
+            struct.unpack('>i', b'GURL')[0], # kInternetEventClass,
+            struct.unpack('>i', b'GURL')[0], # kAEGetURL
+        )
 
     def applicationWillFinishLaunching_(self, notification):
         delegate = NS.App.delegate()
@@ -53,8 +66,7 @@ class Delegate(NS.Object):
             # Seems like Qt has replaced us as the delegate.
             # They don't seem to forward the notifications that we want,
             # so we need to take over (again).
-            self._next = delegate
-            NS.App.setDelegate_(self)
+            self._init()
 
     def applicationDidFinishLaunching_(self, notification):
         user_info = notification.userInfo()
@@ -83,6 +95,10 @@ class Delegate(NS.Object):
     def userNotificationCenter_shouldPresentNotification_(self, center, note):
         # print "userNotificationCenter_shouldPresentNotification_"
         return True;
+
+    def handleGetURLEvent_withReplyEvent_(self, event, reply):
+        print 'handleGetURLEvent_withReplyEvent_', event, reply
+
 
 
 _default_identifier = 'com.westernx.metatools'
