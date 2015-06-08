@@ -90,6 +90,7 @@ def build_app(
     python_path=(),
     envvars=(),
 
+    plist_defaults=None,
     register=True,
 
 ):
@@ -134,22 +135,22 @@ def build_app(
     build_time = datetime.datetime.now()
 
     # Build the plist
-    plist = {}
-    plist['CFBundleDisplayName'] = name
-    plist['CFBundleIdentifier'] = identifier
-    plist['CFBundleVersion'] = version
-    plist['CFBundleExecutable'] = safe_name
+    plist = (plist_defaults or {}).copy()
+    plist.setdefault('CFBundleDisplayName', name)
+    plist.setdefault('CFBundleIdentifier', identifier)
+    plist.setdefault('CFBundleVersion', version)
+    plist.setdefault('CFBundleExecutable', safe_name)
 
     # plist['CFBundleIconFile'] = ''
-    plist['CFBundleGetInfoString'] = 'Created by metatools'
-    plist['CFBundlePackageType'] = 'APPL'
-    plist['CFBundleSignature'] = '????'
-    plist['NSPrincipalClass'] = 'NSApplication'
+    plist.setdefault('CFBundleGetInfoString', 'Created by metatools')
+    plist.setdefault('CFBundlePackageType', 'APPL')
+    plist.setdefault('CFBundleSignature', '????')
+    plist.setdefault('NSPrincipalClass', 'NSApplication')
 
     # This one MUST be set, even though Apple says it is not required. If it is
     # not set, and we use the compiled bootstrapper to that it takes effect, 
     # AND we use Qt, Qt will crash when trying to render the menu bar.
-    plist['CFBundleName'] = name
+    plist.setdefault('CFBundleName', name)
 
     if icon:
         plist['CFBundleIconFile'] = os.path.basename(icon)
@@ -157,16 +158,16 @@ def build_app(
         shutil.copy(icon, os.path.join(bundle_path, 'Contents', 'Resources'))
 
     if url_schemes:
-        plist['CFBundleURLTypes'] = [{
+        plist.setdefault('CFBundleURLTypes', []).extend({
             'CFBundleURLName': '%s.%s' % (identifier, url_scheme),
             'CFBundleURLSchemes': [url_scheme],
-        } for url_scheme in url_schemes]
+        } for url_scheme in url_schemes)
 
     if file_types:
-        plist['CFBundleDocumentTypes'] = [{
+        plist.setdefault('CFBundleDocumentTypes', []).append({
             'CFBundleURLName': '%s.%s' % (identifier, url_scheme),
             'CFBundleTypeExtensions': file_type['extensions'],
-        } for file_type in file_types]
+        } for file_type in file_types)
 
     plistlib.writePlist(plist, os.path.join(bundle_path, 'Contents', 'Info.plist'))
 
