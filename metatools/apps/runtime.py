@@ -1,9 +1,10 @@
 import functools
 import site
 import struct
+import sys
+import warnings
 
 from ..moduleproxy import ModuleProxy
-
 
 extras = '/System/Library/Frameworks/Python.framework/Versions/Current/Extras/lib/python'
 site.addsitedir(extras)
@@ -15,10 +16,11 @@ import Foundation
 import objc
 
 
-
 NS = ModuleProxy(['NS'], [Foundation, AppKit])
 CF = ModuleProxy(['CF'], [CoreFoundation])
 
+
+HANDLE_APPLE_EVENTS = False
 
 _has_already_done = set()
 def _already_done(name):
@@ -30,11 +32,12 @@ def _already_done(name):
 def on_app_event(func=None, name=None):
     if func is None:
         return functools.partial(on_app_event, name=name)
-    Delegate._callbacks.setdefault(name or func.__name__, []).append(func)
+    WXAppDelegate._callbacks.setdefault(name or func.__name__, []).append(func)
     return func
 
 
-class Delegate(NS.Object):
+# These classes exist in a global namespace, so we need something unique.
+class WXAppDelegate(NS.Object):
 
     _instance = None
     _callbacks = {}
@@ -51,14 +54,14 @@ class Delegate(NS.Object):
     def _init(self):
         self._next = NS.App.delegate()
         NS.App.setDelegate_(self)
-        print 'setting up apple events'
-        apple_event_manager = NS.AppleEventManager.sharedAppleEventManager()
-        apple_event_manager.setEventHandler_andSelector_forEventClass_andEventID_(
-            self,
-            self.handleGetURLEvent_withReplyEvent_,
-            struct.unpack('>i', b'GURL')[0], # kInternetEventClass,
-            struct.unpack('>i', b'GURL')[0], # kAEGetURL
-        )
+        if HANDLE_APPLE_EVENTS: # In development.
+            apple_event_manager = NS.AppleEventManager.sharedAppleEventManager()
+            apple_event_manager.setEventHandler_andSelector_forEventClass_andEventID_(
+                self,
+                self.handleGetURLEvent_withReplyEvent_,
+                struct.unpack('>i', b'GURL')[0], # kInternetEventClass,
+                struct.unpack('>i', b'GURL')[0], # kAEGetURL
+            )
 
     def applicationWillFinishLaunching_(self, notification):
         delegate = NS.App.delegate()
@@ -69,6 +72,8 @@ class Delegate(NS.Object):
             self._init()
 
     def applicationDidFinishLaunching_(self, notification):
+        
+        # If we launched due to a user notification, pass it to the normal handler.
         user_info = notification.userInfo()
         user_notification = user_info and user_info.objectForKey_("NSApplicationLaunchUserNotificationKey")
         if user_notification:
@@ -76,25 +81,10 @@ class Delegate(NS.Object):
                 NS.UserNotificationCenter.defaultUserNotificationCenter(),
                 user_notification
             )
+        
+        # If we replaced a delegate, call it too.
         if self._next:
             self._next.applicationDidFinishLaunching_(notification)
-
-    def userNotificationCenter_didDeliverNotification_(self, center, notification):
-        pass
-        # print "userNotificationCenter_didDeliverNotification_"
-
-    def userNotificationCenter_didActivateNotification_(self, center, notification):
-        print "userNotificationCenter_didActivateNotification_"
-        meta = notification.userInfo()
-        if 'uitools' in meta:
-            print meta['uitools']
-        
-        # If you want to remove it:
-        center.removeDeliveredNotification_(notification)
-
-    def userNotificationCenter_shouldPresentNotification_(self, center, note):
-        # print "userNotificationCenter_shouldPresentNotification_"
-        return True;
 
     def handleGetURLEvent_withReplyEvent_(self, event, reply):
         print 'handleGetURLEvent_withReplyEvent_', event, reply
@@ -102,13 +92,13 @@ class Delegate(NS.Object):
 
 
 _default_identifier = 'com.westernx.metatools'
-def replace_bundle_id(bundle_id=None):
+def replace_bundle_id(bundle_id=None, reason=None):
 
     bundle_id = bundle_id or _default_identifier
 
     if _already_done('replace_bundle_id'):
         return
-    print >> sys.stderr, 'WARNING: The NSBundle class is being monkeypatched by metatools.'
+    warnings.warn('the NSBundle class is being monkeypatched %s' % (reason or ''))
 
     import ctypes
     C = ModuleProxy(['', 'c_'], [ctypes])
@@ -155,7 +145,7 @@ def initialize(standalone=False, fallback_indentifier=None):
 
     if not _already_done('initialize'):
         app = NS.Application.sharedApplication()
-        app.setDelegate_(Delegate.instance())
+        app.setDelegate_(WXAppDelegate.instance())
 
     if standalone:
         _standalone()
