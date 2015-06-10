@@ -64,6 +64,22 @@ def compile_bootstrap(target, source):
     shutil.rmtree(build_dir)
 
 
+def register_app(bundle_path, identifier=None):
+
+    lsregister = '/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister'
+    dump = check_output([lsregister, '-dump'])
+
+    if identifier:
+        for chunk in re.split(r'-{10,}', dump):
+            if not re.search(r'identifier:\s+%s' % identifier, chunk):
+                continue
+            m = re.search(r'path:\s+([^\n]+)', chunk)
+            old_path = m.group(1)
+            if old_path != bundle_path:
+                print 'lsregister: unregistering', old_path
+                check_call([lsregister, '-u', old_path])
+
+    call([lsregister, '-v', '-f', bundle_path])
 
 
 def build_app(
@@ -224,24 +240,7 @@ def build_app(
             check_call(['chmod', 'a+x', target_path])
 
     if register:
-
-        lsregister = '/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister'
-        dump = check_output([lsregister, '-apps', '-dump'])
-        registered = False
-
-        for chunk in re.split(r'-{10,}', dump):
-            if not re.search(r'identifier:\s+%s' % identifier, chunk):
-                continue
-            m = re.search(r'path:\s+([^\n])+', chunk)
-            old_path = m.group(1)
-            
-            if old_path == bundle_path:
-                registered = True
-            else:
-                check_call([lsregister, '-vu', old_path])
-
-        if not registered:
-            call([lsregister, '-v', bundle_path])
+        register_app(bundle_path, identifier)
 
 
 
