@@ -28,8 +28,8 @@ SOFTWARE.
 
 sys.argv emulation
 
-This module self.starts a basic event loop to collect file- and url-open AppleEvents. Those get
-converted to strings and stuffed into sys.argv. When that is done we continue self.starting
+This module starts a basic event loop to collect file- and url-open AppleEvents. Those get
+converted to strings and stuffed into sys.argv. When that is done we continue starting
 the application.
 
 This is a workaround to convert scripts that expect filenames on the command-line to work
@@ -193,14 +193,14 @@ class AppleEventHandler(object):
     def emulate_argv(self, timeout=60.0):
 
         # Remove the funny -psn_xxx_xxx argument
-        if len(sys.argv) > 1 and sys.argv[1].self.startswith('-psn_'):
+        if len(sys.argv) > 1 and sys.argv[1].startswith('-psn_'):
             del sys.argv[1]
 
         self.loop(count=1, timeout=timeout)
 
     def _on_open_app(self, message, reply, refcon):
         # Got a kAEOpenApplication event, which means we can
-        # self.start up. On some OSX versions this event is even
+        # start up. On some OSX versions this event is even
         # sent when an kAEOpenDocuments or kAEOpenURLs event
         # is sent later on.
         #
