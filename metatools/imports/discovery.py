@@ -18,6 +18,10 @@ def get_toplevel_imports(module):
     if path is None:
         return []
 
+    # We can't tell with compiled modules.
+    if os.path.splitext(path)[1] in ('.so', '.dylib'):
+        return []
+
     return parse_imports(
         open(path).read(),
         getattr(module, '__package__'),
