@@ -9,15 +9,11 @@ from ..moduleproxy import ModuleProxy
 extras = '/System/Library/Frameworks/Python.framework/Versions/Current/Extras/lib/python'
 site.addsitedir(extras)
 
-from PyObjCTools import AppHelper
 import AppKit
-import CoreFoundation
 import Foundation
 import objc
 
-
 NS = ModuleProxy(['NS'], [Foundation, AppKit])
-CF = ModuleProxy(['CF'], [CoreFoundation])
 
 
 HANDLE_APPLE_EVENTS = False
