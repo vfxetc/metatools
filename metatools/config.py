@@ -1,4 +1,8 @@
-"""Tools for easy persistance of configuration and user preferences for tools.
+"""
+
+.. warning:: We do not use this.
+
+Tools for easy persistance of configuration and user preferences for tools.
 
 Configurations are split into sections and keys; sections are conceptually for
 each tool (or other grouping of settings), and keys are for individual settings

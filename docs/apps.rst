@@ -3,6 +3,9 @@
 App Bundles for OS X
 ====================
 
+.. warning:: This is hilariously out of date.
+
+
 Overview
 --------
 

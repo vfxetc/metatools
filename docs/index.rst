@@ -37,6 +37,7 @@ Contents
     lint
 
     monkeypatch
+    moduleproxy
 
     imports
     deprecate

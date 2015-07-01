@@ -15,7 +15,7 @@ import traceback
 from cStringIO import StringIO
 
 
-def diff_texts(a, b, filename):
+def _diff_strings(a, b, filename):
     """Return a unified diff of two strings."""
     a = a.splitlines()
     b = b.splitlines()
@@ -33,9 +33,10 @@ def module_name_for_path(path):
         head, tail = os.path.split(head)
         module = tail + '.' + module
 
-    # key_base pseudopackages; only the few that the external tools are
-    # in.
-    if '/key_base/' in head:
+    # key_base pseudopackages; only the few that the external tools are in,
+    # and only for the the old Western Post environment.
+    ks_tools = os.environ.get('KS_TOOLS')
+    if ks_tools and ks_tools in head and '/key_base/' in head:
         if '/maya/python/' in head:
             return 'ks.maya.' + module
         if '/key_base/python/' in head:
@@ -301,7 +302,7 @@ def main():
         refactored = rewrite(original, dict(renames), module_name, absolute=opts.absolute)
 
         if re.sub(r'\s+', '', refactored) != re.sub(r'\s+', '', original):
-            print(diff_texts(original, refactored, path))
+            print(_diff_strings(original, refactored, path))
             if opts.write:
                 with open(path, 'wb') as fh:
                     fh.write(refactored)

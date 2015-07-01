@@ -23,17 +23,16 @@ def get_path_containing_package(path):
             return path
 
 
-def get_source_path(module):
-
+def get_source_path(module, must_exist=True):
+    """Get the path to the Python source for the given module."""
     path = getattr(module, '__file__', None)
-
     if not path:
         return
-
     if path.endswith('.pyc'):
         path = path[:-1]
-
-    if os.path.exists(path):
+    if not path.endswith('.py'):
+        return
+    if not must_exist or os.path.exists(path):
         return path
 
 

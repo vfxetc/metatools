@@ -4,7 +4,7 @@ import ast
 from . import utils
 
 
-def get_toplevel_imports(module):
+def get_top_level_imports(module):
     """Get the imports at the top-level of the given Python module.
 
     :param module: An actual module; not the name.
@@ -12,13 +12,11 @@ def get_toplevel_imports(module):
 
     """
 
-
     path = utils.get_source_path(module)
-
-    if path is None:
+    if not path:
         return []
 
-    # We can't tell with compiled modules.
+    # we can't deal with compiled modules
     if os.path.splitext(path)[1] != '.py':
         return []
 
@@ -30,13 +28,13 @@ def get_toplevel_imports(module):
     )
 
 
-def parse_imports(source, package=None, module=None, path=None, toplevel=True):
-    """Get the imports at the top-level of the given Python module.
+def parse_imports(source, package=None, module=None, path=None, deep=False):
+    """Get the imports in the given Python source code.
 
     :param str source: Python source code.
     :param str package: The ``__package__`` this source is from.
     :param str module: The ``__name__`` this source is from.
-    :param bool toplevel: Walk the full AST, or only look at the top-level?
+    :param bool deep: Walk the full AST, or only look at the top-level?
     :returns list: The names of everything imported; absolute if package
         and module are provided.
 
@@ -49,10 +47,11 @@ def parse_imports(source, package=None, module=None, path=None, toplevel=True):
         # too much white in the last line.
         mod_ast = ast.parse(source.rstrip())
     except (TypeError, SyntaxError) as e:
+        # TODO: should this be a warning?
         print '# %s: %s in %s: %s' % (__name__, e.__class__.__name__, path, e)
         return []
 
-    for node in ast.walk(mod_ast) if not toplevel else mod_ast.body:
+    for node in ast.walk(mod_ast) if deep else mod_ast.body:
         if isinstance(node, ast.Import):
             names.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):

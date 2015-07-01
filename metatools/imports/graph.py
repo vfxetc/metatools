@@ -18,7 +18,7 @@ def iter_modules(root):
             if module.rsplit('.', 1)[-1] == '__init__':
                 module = package
 
-            yield path, module, parse_imports(open(path).read(), package, module, path, toplevel=False)
+            yield path, module, parse_imports(open(path).read(), package, module, path, deep=True)
 
 
 def iter_dot(opts, roots):

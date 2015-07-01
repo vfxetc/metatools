@@ -3,6 +3,13 @@
 Imports and Modules
 ===================
 
+Loading Entry Points
+--------------------
+
+.. automodule:: metatools.imports.entry_points
+    :members:
+
+
 Discovery of Dependencies
 -------------------------
 

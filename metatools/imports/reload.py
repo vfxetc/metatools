@@ -25,7 +25,7 @@ cycles), and iteratively expand the region that must be reloaded. It may cull
 those who have not changes, linearize the remaining dependencies and reload
 everything in a big chain.
 
-The tricky part is since `module discovery <discovery>` does not reveal the
+The tricky part is since `module discovery <discovery>`_ does not reveal the
 actual intensions of the code, e.g.:
 
 .. digraph:: actual_graph
@@ -70,6 +70,7 @@ from . import discovery
 
 _VERBOSE = False
 
+
 # Memoization stores.
 _reload_times = {}
 _modification_times = {}
@@ -106,7 +107,7 @@ def _iter_dependencies(module, visited=None):
         package_dir = module_path and utils.get_path_containing_package(module_path)
 
         # Get the names of top-level imports.
-        discovered_names = discovery.get_toplevel_imports(module)
+        discovered_names = discovery.get_top_level_imports(module)
 
         if _VERBOSE:
             print '# TOP-LEVEL IMPORTS for', module.__name__
@@ -214,6 +215,7 @@ def _is_outdated(module):
 
 
 def is_outdated(module, recursive=True):
+    '''Has the source of given module or any of its dependencies changed on disk?'''
     mods = _iter_chain(module) if recursive else [module]
     return any(_is_outdated(mod) for mod in mods)
 
@@ -221,7 +223,21 @@ def is_outdated(module, recursive=True):
 
 
 def reload(module, _time=None):
-    
+    '''reload(module)
+
+    Reload the given module, allowing it to retain state across the reload.
+
+    This is effectively a drop-in replacement for the built-in ``reload``
+    function, except it plays well with :func:`autoreload`.
+
+    If there is a ``__before_reload__`` function in the module, it will be
+    called before reload.
+
+    If there is a ``__after_reload__`` function, it will be called after
+    the reload, and it will receive the return value from ``__before_reload__``.
+
+    '''
+
     print '# autoreload: Reloading: %s at 0x%x' % (module.__name__, id(module))
         
     state = None
@@ -242,16 +258,26 @@ def reload(module, _time=None):
         module.__after_reload__(state)
 
 
-def autoreload(module, visited=None, force_self=None, _depth=0, _time=None):
+def autoreload(module, force_self=None, _visited=None, _depth=0, _time=None):
+    '''autoreload(module, force_self=None)
+
+    Reload the given module if it, or any of its dependencies have new source code.
+
+    :param module: The module to reload if there are changes.
+    :param force_self: Reload this module even if there are no dependency changes.
+    :return: ``True`` if the module was reloaded.
     
-    if visited is None:
-        visited = set()
+    '''
+
+
+    if _visited is None:
+        _visited = set()
     
     # Make sure to not hit the same module twice. Don't need to add it to
     # visited because _iter_dependencies will do that.
-    if module.__name__ in visited:
+    if module.__name__ in _visited:
         return
-    visited.add(module.__name__)
+    _visited.add(module.__name__)
     
     _time = _time or time.time()
 
@@ -267,7 +293,7 @@ def autoreload(module, visited=None, force_self=None, _depth=0, _time=None):
     # Give all dependencies a chance to reload.
     dependency_reloaded = False
     for dependency in _iter_dependencies(module):
-        dependency_reloaded = autoreload(dependency, visited, _depth=_depth+1, _time=_time) or dependency_reloaded
+        dependency_reloaded = autoreload(dependency, _visited=_visited, _depth=_depth+1, _time=_time) or dependency_reloaded
 
         # Reload if the dependency has been reloaded before us, even if not this time.
         if not dependency_reloaded:
