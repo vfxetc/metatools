@@ -15,6 +15,14 @@ def get_name_for_path(path):
     return '.'.join(name)
 
 
+def get_path_containing_package(path):
+    '''Get the path contains the package which contains the given path.'''
+    while True:
+        path = os.path.dirname(path)
+        if not os.path.exists(os.path.join(path, '__init__.py')):
+            return path
+
+
 def get_source_path(module):
 
     path = getattr(module, '__file__', None)

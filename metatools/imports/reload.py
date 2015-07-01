@@ -73,21 +73,21 @@ _VERBOSE = False
 # Memoization stores.
 _reload_times = {}
 _modification_times = {}
-_child_lists = {}
+_dependency_lists = {}
 
 
 def __before_reload__():
-    return _reload_times, _modification_times, _child_lists
+    return _reload_times, _modification_times, _dependency_lists
 
 
 def __after_reload__(state):
     state = state or ()
-    for src, dst in zip(state, (_reload_times, _modification_times, _child_lists)):
+    for src, dst in zip(state, (_reload_times, _modification_times, _dependency_lists)):
         for k, v in src.iteritems():
             dst.setdefault(k, v)
 
 
-def _iter_children(module, visited=None):
+def _iter_dependencies(module, visited=None):
     
     if visited is None:
         visited = set()
@@ -97,79 +97,84 @@ def _iter_children(module, visited=None):
         return
     visited.add(module.__name__)
     
-    dependencies = _child_lists.get(module.__name__)
+    dependencies = _dependency_lists.get(module.__name__)
     if dependencies is None:
 
-        children = []
+        potential_dependencies = []
 
-        path = utils.get_source_path(module)
+        module_path = utils.get_source_path(module)
+        package_dir = module_path and utils.get_path_containing_package(module_path)
 
-        # Get the absolute names of top-level imports.
+        # Get the names of top-level imports.
         discovered_names = discovery.get_toplevel_imports(module)
-        
+
         if _VERBOSE:
-            print '# DISCOVERY for', module.__name__
+            print '# TOP-LEVEL IMPORTS for', module.__name__
             for name in discovered_names:
                 print '#     ', name
 
+        # Since toplevel imports may be either absolute or relative (unless
+        # you are using Python 3 or `from __future__ import absolute_imports`),
+        # we need to actually check if it is possible that these imports are
+        # related to us.
         if discovered_names:
 
-            # Look in $KS_TOOLS, if it is set.
-            include_path = [os.environ.get('KS_TOOLS')]
+            module_import_path = [package_dir]
 
-            # Include anywhere on $KS_PYTHON_SITES that we could have
-            # been imported from.
-            include_path.extend(x for x in os.environ.get('KS_PYTHON_SITES', '').split(':') if
-                x and discovery.path_is_in_directories(path, [x])
-            )
+            # Include anywhere on the sys.path that is not the stdlib
+            stdlib = os.path.dirname(os.path.__file__)
+            for path in sys.path:
+                if path == stdlib or (discovery.path_is_in_directories(path, [sys.prefix]) and 'site-packages' not in path):
+                    continue
+                module_import_path.append(path)
 
-            # Include anywhere on the path that we could have been
-            # imported from.
-            include_path.extend(x for x in sys.path if
-                discovery.path_is_in_directories(path, [x])
-            )
-
-            # Finally, determime which of the discovered children are
-            # on this path.
-            include_path = filter(None, include_path)
+            # Determine which of the discovered dependencies are on this path.
             for discovered_name in discovered_names:
+
                 discovered_module = sys.modules.get(discovered_name)
-                discovered_path = discovered_module and utils.get_source_path(discovered_module)
-                if discovered_path and discovery.path_is_in_directories(discovered_path, include_path):
-                    children.append(discovered_name)
+                if not discovered_module:
+                    continue
 
-        # Manually specified children.
-        children.extend(getattr(module, '__also_reload__', []))
+                discovered_path = utils.get_source_path(discovered_module)
+                if not discovered_path:
+                    continue
 
-        # Resolve them all.
-        children = [
-            utils.resolve_relative_name(module.__package__, module.__name__, name)
-            for name in children
-            if name
-        ]
+                if discovery.path_is_in_directories(discovered_path, module_import_path):
+                    potential_dependencies.append(discovered_name)
+
+        # Pull in manually specified dependencies.
+        potential_dependencies.extend(getattr(module, '__also_reload__', []))
 
         # Finally, get all of the modules.
         dependencies = []
         seen = set()
-        for name in children:
+        for name in potential_dependencies:
 
-            if name in seen:
+            if not name or name in seen:
                 continue
             seen.add(name)
 
+            # Try the name as given...
             dependency = sys.modules.get(name)
-            if dependency is not None:
+            if dependency is not None and dependency not in dependencies:
                 dependencies.append(dependency)
 
-        _child_lists[module.__name__] = dependencies
+            # ... and also absolute. We *could* check to see if '__future__.absolute_import'
+            # is in the discovered_names, but lets be lazy developers for now.
+            absname = utils.resolve_relative_name(module.__package__, module.__name__, name)
+            dependency = sys.modules.get(absname)
+            if dependency is not None and dependency not in dependencies:
+                dependencies.append(dependency)
+
+        _dependency_lists[module.__name__] = dependencies
 
         if _VERBOSE:
             print '# DEPENDENCIES FOR', module.__name__
             for x in dependencies:
                 print '#    ', x.__name__
 
-    for child in dependencies:
-        yield child
+    for dependency in dependencies:
+        yield dependency
 
 
 
@@ -183,8 +188,8 @@ def _iter_chain(module, visited=None):
         return
     visited.add(module.__name__)
     
-    for child in _iter_children(module, visited):
-        for x in _iter_chain(child, visited):
+    for dependency in _iter_dependencies(module, visited):
+        for x in _iter_chain(dependency, visited):
             yield x
     yield module
 
@@ -197,7 +202,7 @@ def _is_outdated(module):
     if file_path is not None:
         
         # Determine if we should reload via mtimes.
-        last_modified_time   = _modification_times.get(file_path)
+        last_modified_time = _modification_times.get(file_path)
         modified_time = os.path.getmtime(file_path)
         
         _modification_times[file_path] = modified_time
@@ -225,8 +230,8 @@ def reload(module, _time=None):
         
     __builtin__.reload(module)
     
-    # Wipe the child cache.
-    _child_lists.pop(module.__name__, None)
+    # Wipe the dependency cache.
+    _dependency_lists.pop(module.__name__, None)
 
     # Remember when it was reloaded.
     _reload_times[module.__name__] = _time or time.time()()
@@ -243,7 +248,7 @@ def autoreload(module, visited=None, force_self=None, _depth=0, _time=None):
         visited = set()
     
     # Make sure to not hit the same module twice. Don't need to add it to
-    # visited because _iter_children will do that.
+    # visited because _iter_dependencies will do that.
     if module.__name__ in visited:
         return
     visited.add(module.__name__)
@@ -259,20 +264,20 @@ def autoreload(module, visited=None, force_self=None, _depth=0, _time=None):
     if _VERBOSE and my_time:
         print '# autoreload: %s last reloaded at %s' % (module.__name__, my_time)
 
-    # Give all children a chance to reload.
-    child_reloaded = False
-    for child in _iter_children(module):
-        child_reloaded = autoreload(child, visited, _depth=_depth+1, _time=_time) or child_reloaded
+    # Give all dependencies a chance to reload.
+    dependency_reloaded = False
+    for dependency in _iter_dependencies(module):
+        dependency_reloaded = autoreload(dependency, visited, _depth=_depth+1, _time=_time) or dependency_reloaded
 
-        # Reload if the child has been reloaded before us, even if not this time.
-        if not child_reloaded:
-            child_time = _reload_times.get(child.__name__)
-            child_reloaded = child_time and (not my_time or child_time > my_time)
-            if child_reloaded:
-                print '# autoreload: Child %s of %s was previously reloaded' % (child.__name__, module.__name__)
+        # Reload if the dependency has been reloaded before us, even if not this time.
+        if not dependency_reloaded:
+            dependency_time = _reload_times.get(dependency.__name__)
+            dependency_reloaded = dependency_time and (not my_time or dependency_time > my_time)
+            if dependency_reloaded:
+                print '# autoreload: dependency %s of %s was previously reloaded' % (dependency.__name__, module.__name__)
     
-    # Reload ourselves if any children did, or if we are out of date.
-    if force_self or child_reloaded or _is_outdated(module):
+    # Reload ourselves if any dependencies did, or if we are out of date.
+    if force_self or dependency_reloaded or _is_outdated(module):
         reload(module, _time=_time)
         return True
 

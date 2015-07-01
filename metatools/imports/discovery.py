@@ -19,7 +19,7 @@ def get_toplevel_imports(module):
         return []
 
     # We can't tell with compiled modules.
-    if os.path.splitext(path)[1] in ('.so', '.dylib'):
+    if os.path.splitext(path)[1] != '.py':
         return []
 
     return parse_imports(
@@ -69,15 +69,17 @@ def parse_imports(source, package=None, module=None, path=None, toplevel=True):
 
 
 def path_is_in_directories(path, directories):
-    """Is the given path within the given directory?
+    """Is the given path within the given directories?
 
     :param str path: The path to test.
-    :param str directory: The directory to test if the path is in.
+    :param list directories: The directories to test if the path is in.
     :returns bool:
 
     """
+    path = os.path.abspath(path) + os.path.sep
+    for dir_ in directories:
+        dir_ = os.path.abspath(dir_) + os.path.sep
+        if path.startswith(dir_):
+            return True
 
-    a = filter(None, os.path.abspath(path)[1:].split('/'))
-    bs = [filter(None, os.path.abspath(x)[1:].split('/')) for x in directories]
-    return any(a[:len(b)] == b for b in bs)
 
