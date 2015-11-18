@@ -244,17 +244,14 @@ def build_app(
 
 
 
-                
-    
-    # DONE
-
-if __name__ == '__main__':
+def main():
 
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-f', '--force', action='store_true')
 
     parser.add_argument('-n', '--name')
+    parser.add_argument('-i', '--icon')
 
     parser.add_argument('--compile-bootstrap', action='store_true', help='use compiled bootstrapper')
     parser.add_argument('--source-profile', action='store_true', help='source bash profile')
@@ -287,7 +284,8 @@ if __name__ == '__main__':
         bundle_path=args.bundle_path,
 
         name=args.name,
-
+        icon=args.icon,
+        
         argv_emulation=args.argv_emulation,
         on_open_url=args.on_open_url,
         on_open_document=args.on_open_document,
@@ -304,3 +302,8 @@ if __name__ == '__main__':
         }] if args.file_types else (),
 
     )
+
+
+if __name__ == '__main__':
+    main()
+
