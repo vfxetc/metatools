@@ -198,15 +198,17 @@ def build_app(
         } for url_scheme in url_schemes)
 
     if file_types:
-        doc_types = plist.setdefault('CFBundleDocumentTypes', [])
-        for i, file_type in enumerate(file_types):
-            doc_type = {
+        file_type_plist = plist.setdefault('CFBundleDocumentTypes', [])
+        for i, spec in enumerate(file_types):
+            file_type = {
                 'CFBundleTypeName': '%s.file%s' % (identifier, i),
-                'CFBundleTypeExtensions': file_type['extensions'],
+                'CFBundleTypeExtensions': spec['extensions'],
             }
-            if file_type.get('icon'):
-                doc_type['CFBundleTypeIconFile'] = copy_icon(bundle_path, file_type.get('icon'))
-            doc_types.append(doc_type)
+            if spec.get('icon'):
+                file_type['CFBundleTypeIconFile'] = copy_icon(bundle_path, spec.get('icon'))
+            if spec.get('rank'):
+                file_type['LSHandlerRank'] = spec['rank']
+            file_type_plist.append(file_type)
 
     plistlib.writePlist(plist, os.path.join(bundle_path, 'Contents', 'Info.plist'))
 
@@ -267,12 +269,19 @@ def build_app(
 
 
 def _parse_file_type(input_):
-    m = re.match(r'^([\w.,]+)(?::(.*))?$', input_)
-    exts, icon = m.groups()
-    return {
-        'extensions': [ext.strip().strip('.') for ext in exts.split(',')],
-        'icon': icon.strip() if icon else None,
-    }
+    """
+        Examples:
+            'glpt;icon=/path/to/icon'
+            'abc,dpx;rank=Alternate'
+    """
+
+    m = re.match(r'^(.*?)(?:[;:&](.*))?$', input_)
+    extensions, kwarg_string = m.groups()
+
+    parsed = dict(chunk.split('=', 1) for chunk in kwarg_string.split(';'))
+    parsed['extensions'] = [ext.strip().strip('.') for ext in extensions.split(',')]
+    return parsed
+
 
 def main():
 
