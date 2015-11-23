@@ -82,6 +82,26 @@ def register_app(bundle_path, identifier=None):
     call([lsregister, '-v', '-f', bundle_path])
 
 
+def copy_icon(bundle_path, icon):
+
+    resources = os.path.join(bundle_path, 'Contents', 'Resources')
+    if not os.path.exists(resources):
+        os.makedirs(resources)
+
+    name, ext = os.path.splitext(os.path.basename(icon))
+    
+    # Get a unique path.
+    counter = 0
+    path = os.path.join(resources, name + ext)
+    while os.path.exists(path):
+        counter += 1
+        path = os.path.join(resources, '%s_%d%s' % (name, counter, ext))
+    
+    shutil.copy(icon, path)
+
+    return os.path.basename(path)
+
+
 def build_app(
 
     target_type,
@@ -169,9 +189,7 @@ def build_app(
     plist.setdefault('CFBundleName', name)
 
     if icon:
-        plist['CFBundleIconFile'] = os.path.basename(icon)
-        os.makedirs(os.path.join(bundle_path, 'Contents', 'Resources'))
-        shutil.copy(icon, os.path.join(bundle_path, 'Contents', 'Resources'))
+        plist['CFBundleIconFile'] = copy_icon(bundle_path, icon)
 
     if url_schemes:
         plist.setdefault('CFBundleURLTypes', []).extend({
@@ -180,10 +198,15 @@ def build_app(
         } for url_scheme in url_schemes)
 
     if file_types:
-        plist.setdefault('CFBundleDocumentTypes', []).append({
-            'CFBundleURLName': '%s.%s' % (identifier, url_scheme),
-            'CFBundleTypeExtensions': file_type['extensions'],
-        } for file_type in file_types)
+        doc_types = plist.setdefault('CFBundleDocumentTypes', [])
+        for i, file_type in enumerate(file_types):
+            doc_type = {
+                'CFBundleTypeName': '%s.file%s' % (identifier, i),
+                'CFBundleTypeExtensions': file_type['extensions'],
+            }
+            if file_type.get('icon'):
+                doc_type['CFBundleTypeIconFile'] = copy_icon(bundle_path, file_type.get('icon'))
+            doc_types.append(doc_type)
 
     plistlib.writePlist(plist, os.path.join(bundle_path, 'Contents', 'Info.plist'))
 
@@ -243,6 +266,13 @@ def build_app(
         register_app(bundle_path, identifier)
 
 
+def _parse_file_type(input_):
+    m = re.match(r'^([\w.,]+)(?::(.*))?$', input_)
+    exts, icon = m.groups()
+    return {
+        'extensions': [ext.strip().strip('.') for ext in exts.split(',')],
+        'icon': icon.strip() if icon else None,
+    }
 
 def main():
 
@@ -257,7 +287,7 @@ def main():
     parser.add_argument('--source-profile', action='store_true', help='source bash profile')
 
     parser.add_argument('-u', '--url-scheme', action='append')
-    parser.add_argument('--file-types', action='append')
+    parser.add_argument('--file-type', action='append', type=_parse_file_type)
 
     parser.add_argument('--argv-emulation', action='store_true', help='source bash profile')
     parser.add_argument('--on-open-url', help='BROKEN')
@@ -297,9 +327,7 @@ def main():
         envvars=args.envvar or (),
 
         url_schemes=args.url_scheme or (),
-        file_types=[{
-            'extensions': args.file_types
-        }] if args.file_types else (),
+        file_types=args.file_type or (),
 
     )
 
