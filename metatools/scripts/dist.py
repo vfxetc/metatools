@@ -94,5 +94,8 @@ def _bootstrap_distutils():
 
 def verify_setup_kwarg(dist, attr, value):
     _bootstrap_distutils()
-    return os.path.exists(value)
+    if isinstance(value, basestring):
+        return os.path.exists(value)
+    else:
+        return isinstance(value, dict)
 
