@@ -14,9 +14,24 @@ local_tools = os.path.abspath(os.path.join(__file__, '..', '..', '..'))
 
 
 
-def build_scripts(entrypoints_yaml, bin_dir, names=None):
+def build_scripts(source, bin_dir, names=None):
+    """Build some scripts.
 
-    entrypoints = yaml.load(open(entrypoints_yaml).read())
+    :param source: Either a ``str`` path to a ``*.yml`` file, or a dict
+        mapping script names to their definitions.
+    :param str bin_dir: The path to build the scripts into.
+    :param list names: Which scripts to build; something falsey implies all.
+
+    """
+
+
+    if isinstance(source, basestring):
+        entrypoints = yaml.load(open(source).read())
+    elif isinstance(source, dict):
+        entrypoints = source
+    else:
+        raise TypeError('source must be path to YAML, or a dict.')
+
     names = names or entrypoints.keys()
     
     if not os.path.exists(bin_dir):
