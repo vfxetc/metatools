@@ -53,7 +53,7 @@ class TestDiscovery(TestCase):
             def func():
                 import within_func
             
-        '''), toplevel=False)
+        '''), deep=True)
 
         self.assertEqual(names, [
             'os', 'sys',

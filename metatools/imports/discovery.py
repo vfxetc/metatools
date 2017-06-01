@@ -1,5 +1,6 @@
 import os
 import ast
+import re
 
 from . import utils
 
@@ -75,10 +76,16 @@ def path_is_in_directories(path, directories):
     :returns bool:
 
     """
-    path = os.path.abspath(path) + os.path.sep
-    for dir_ in directories:
-        dir_ = os.path.abspath(dir_) + os.path.sep
-        if path.startswith(dir_):
+    path = os.path.abspath(path)
+    directories = [os.path.abspath(x) for x in directories]
+    for dir_ in sorted(directories, key=len):
+        if dir_ == os.path.sep:
             return True
+        if re.match('%s(%s|$)' % (
+            re.escape(dir_),
+            re.escape(os.path.sep)
+        ), path):
+            return True
+    return False
 
 
