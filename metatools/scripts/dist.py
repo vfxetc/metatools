@@ -26,14 +26,14 @@ class build(Command):
         )
 
     def run(self):
-        path = (
+        source = (
             getattr(self.distribution, 'metatools_scripts', None) or
             getattr(self.distribution, 'metatools_entrypoints', None)
         )
-        if path:
+        if source:
             if not os.path.exists(self.build_dir):
                 os.makedirs(self.build_dir)
-            build_scripts(path, self.build_dir)
+            build_scripts(source, self.build_dir)
 
 
 class install(Command):
