@@ -68,8 +68,8 @@ from . import utils
 from . import discovery
 
 
-_VERBOSE = False
-
+_VERBOSE = int(os.environ.get('METATOOLS_RELOAD_VERBOSITY', '0'))
+_DEVELOP = bool(os.environ.get('METATOOLS_RELOAD_DEVELOP', ''))
 
 # Memoization stores.
 _reload_times = {}
@@ -80,12 +80,9 @@ _dependency_lists = {}
 def __before_reload__():
     return _reload_times, _modification_times, _dependency_lists
 
-
 def __after_reload__(state):
-    state = state or ()
-    for src, dst in zip(state, (_reload_times, _modification_times, _dependency_lists)):
-        for k, v in src.iteritems():
-            dst.setdefault(k, v)
+    for src, dst in zip((_reload_times, _modification_times, _dependency_lists), state):
+        dst.update(src)
 
 
 def _iter_dependencies(module, visited=None):
@@ -109,7 +106,7 @@ def _iter_dependencies(module, visited=None):
         # Get the names of top-level imports.
         discovered_names = discovery.get_top_level_imports(module)
 
-        if _VERBOSE:
+        if _VERBOSE > 1:
             print '# TOP-LEVEL IMPORTS for', module.__name__
             for name in discovered_names:
                 print '#     ', name
@@ -169,7 +166,7 @@ def _iter_dependencies(module, visited=None):
 
         _dependency_lists[module.__name__] = dependencies
 
-        if _VERBOSE:
+        if _VERBOSE > 1:
             print '# DEPENDENCIES FOR', module.__name__
             for x in dependencies:
                 print '#    ', x.__name__
@@ -198,14 +195,19 @@ def _iter_chain(module, visited=None):
 
 
 def _is_outdated(module):
-    
+
     file_path = utils.get_source_path(module)
+
     if file_path is not None:
         
         # Determine if we should reload via mtimes.
         last_modified_time = _modification_times.get(file_path)
         modified_time = os.path.getmtime(file_path)
         
+        if 'threads' in file_path:
+            print 'HERE', file_path
+            print '        ', last_modified_time, modified_time
+
         _modification_times[file_path] = modified_time
         
         if last_modified_time and last_modified_time < modified_time:
@@ -251,7 +253,7 @@ def reload(module, _time=None):
 
     # Remember when it was reloaded.
     _reload_times[module.__name__] = _time or time.time()()
-    if _VERBOSE:
+    if _VERBOSE > 1:
         print '\n'.join('%s: %s' % (t, n) for n, t in sorted(_reload_times.iteritems()))
 
     if hasattr(module, '__after_reload__'):
@@ -269,16 +271,22 @@ def autoreload(module, force_self=None, _visited=None, _depth=0, _time=None):
     
     '''
 
-
     if _visited is None:
         _visited = set()
+
+        # Lets hijack this signal to test ourselves.
+        if _DEVELOP:
+            m = sys.modules[__name__]
+            if autoreload(m, None, _visited):
+                print '# autoreload: Restarting after self-reload.'
+                return m.autoreload(module, force_self, _visited)
     
     # Make sure to not hit the same module twice. Don't need to add it to
     # visited because _iter_dependencies will do that.
     if module.__name__ in _visited:
         return
     _visited.add(module.__name__)
-    
+
     _time = _time or time.time()
 
     if _VERBOSE:
@@ -299,7 +307,7 @@ def autoreload(module, force_self=None, _visited=None, _depth=0, _time=None):
         if not dependency_reloaded:
             dependency_time = _reload_times.get(dependency.__name__)
             dependency_reloaded = dependency_time and (not my_time or dependency_time > my_time)
-            if dependency_reloaded:
+            if dependency_reloaded and _VERBOSE > 1:
                 print '# autoreload: dependency %s of %s was previously reloaded' % (dependency.__name__, module.__name__)
     
     # Reload ourselves if any dependencies did, or if we are out of date.
