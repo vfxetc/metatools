@@ -203,10 +203,6 @@ def _is_outdated(module):
         # Determine if we should reload via mtimes.
         last_modified_time = _modification_times.get(file_path)
         modified_time = os.path.getmtime(file_path)
-        
-        if 'threads' in file_path:
-            print 'HERE', file_path
-            print '        ', last_modified_time, modified_time
 
         _modification_times[file_path] = modified_time
         
